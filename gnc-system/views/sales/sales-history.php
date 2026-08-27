@@ -76,7 +76,7 @@ $sales = $saleModel->getSales();
 
             </tr>
 
-            <?php while ($row = mysqli_fetch_assoc($sales)) { ?>
+            <?php while ($row = $sales->fetch(PDO::FETCH_ASSOC)) { ?>
 
                 <tr>
 
@@ -88,7 +88,7 @@ $sales = $saleModel->getSales();
 
                     <td>
 
-                        <?php echo $row['product_name']; ?>
+                        <?php echo $row['productName']; ?>
 
                     </td>
 
@@ -106,7 +106,7 @@ $sales = $saleModel->getSales();
 
                     <td>
 
-                        <?php echo $row['user_name']; ?>
+                        <?php echo $row['userName']; ?>
 
                     </td>
 

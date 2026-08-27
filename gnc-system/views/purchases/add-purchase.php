@@ -1,6 +1,6 @@
 <?php
 session_start();
-if(!isset($_SESSION['user'])) {
+if (!isset($_SESSION['user'])) {
     header("Location: ../login.php");
     exit();
 }
@@ -13,11 +13,13 @@ $products = $productModel->getProducts();
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-<title>Registrar Pedido</title>
-<link rel="stylesheet" href="../../assets/css/style.css">
+    <title>Registrar Pedido</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
+
 <body>
     <div class="navbar">
         <a href="../home.php" class="logo">
@@ -42,7 +44,7 @@ $products = $productModel->getProducts();
                     <label>Proveedor:</label>
                     <select name="supplier_id" required>
                         <option value="">Seleccione proveedor</option>
-                        <?php while($row = mysqli_fetch_assoc($suppliers)) { ?>
+                        <?php while ($row = $suppliers->fetch(PDO::FETCH_ASSOC)) { ?>
                             <option value="<?php echo $row['id']; ?>">
                                 <?php echo $row['name']; ?>
                             </option>
@@ -54,7 +56,7 @@ $products = $productModel->getProducts();
                     <label>Producto solicitado:</label>
                     <select name="product_id" required>
                         <option value="">Seleccione producto</option>
-                        <?php while($row = mysqli_fetch_assoc($products)) { ?>
+                        <?php while ($row = $products->fetch(PDO::FETCH_ASSOC)) { ?>
                             <option value="<?php echo $row['id']; ?>">
                                 <?php echo $row['name']; ?> (Stock actual: <?php echo $row['stock']; ?>)
                             </option>
@@ -87,4 +89,5 @@ $products = $productModel->getProducts();
         </div>
     </div>
 </body>
+
 </html>

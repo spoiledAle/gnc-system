@@ -8,7 +8,7 @@ $productModel = new ProductModel();
 
 $products = $productModel->getProducts();
 
-if(is_array($products) || mysqli_num_rows($products) > 0) {
+if($products && count($products->fetchAll(PDO::FETCH_ASSOC)) > 0) {
 
     echo "
 

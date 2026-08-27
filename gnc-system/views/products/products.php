@@ -215,7 +215,7 @@ $categories = $productModel->getCategories();
 
                 </option>
 
-                <?php while($category = mysqli_fetch_assoc($categories)) { ?>
+                <?php while($category = $categories->fetch(PDO::FETCH_ASSOC)) { ?>
 
                     <option value="<?php echo $category['id']; ?>">
 
@@ -251,7 +251,7 @@ $categories = $productModel->getCategories();
 
         </tr>
 
-        <?php while ($row = mysqli_fetch_assoc($result)) { ?>
+        <?php while ($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
 
             <tr>
 

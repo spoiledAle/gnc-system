@@ -238,7 +238,12 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 -- Volcando datos para la tabla gncproyecto.users: ~1 rows (aproximadamente)
 INSERT INTO `users` (`id`, `name`, `email`, `password`)
-VALUES (1, 'Admin2AC', 'admin2AC@gmail.com', 'Admin1234');
+VALUES (
+    1,
+    'Admin2AC',
+    'admin2AC@gmail.com',
+    '$2y$10$SLwUHrbj8chJabj9iq4hFeNsoaHnVbulX7PST3yUvIzxY9bsd/BKq'
+  );
 -- Volcando estructura para disparador gncproyecto.decrease_stock_after_sale
 SET @OLDTMP_SQL_MODE = @@SQL_MODE,
   SQL_MODE = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';

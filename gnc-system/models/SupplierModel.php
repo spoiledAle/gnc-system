@@ -8,25 +8,16 @@ class SupplierModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM suppliers";
-
-        $result = mysqli_query($conn, $sql);
-
-        return $result;
+        return $conn->query("SELECT * FROM TblSupplier");
 
     }
 
     public function getSupplierById($id) {
 
         global $conn;
-        $sql = "SELECT * FROM suppliers WHERE id = ?";
-        $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "i", $id);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        $supplier = mysqli_fetch_assoc($result);
-        mysqli_stmt_close($stmt);
-        return $supplier;
+        $stmt = $conn->prepare("SELECT * FROM TblSupplier WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function addSupplier(
@@ -36,12 +27,8 @@ class SupplierModel {
         $address
     ) {
         global $conn;
-        $sql = "INSERT INTO suppliers (name, phone, email, address) VALUES (?, ?, ?, ?)";
-        $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "ssss", $name, $phone, $email, $address);
-        $result = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        return $result;
+        $stmt = $conn->prepare("INSERT INTO TblSupplier (name, phone, email, address) VALUES (?, ?, ?, ?)");
+        return $stmt->execute([$name, $phone, $email, $address]);
     }
 
     public function updateSupplier(
@@ -54,14 +41,16 @@ class SupplierModel {
 
         global $conn;
 
-        $sql = "UPDATE suppliers SET 
-                name = '$name', 
-                phone = '$phone', 
-                email = '$email', 
-                address = '$address' 
-                WHERE id = '$id'";
+        $sql = "UPDATE TblSupplier SET
+                name = ?,
+                phone = ?,
+                email = ?,
+                address = ?
+                WHERE id = ?";
 
-        return mysqli_query($conn, $sql);
+        $stmt = $conn->prepare($sql);
+
+        return $stmt->execute([$name, $phone, $email, $address, $id]);
 
     }
 
@@ -69,13 +58,10 @@ class SupplierModel {
 
         global $conn;
 
-        $sql = "DELETE FROM suppliers
-        
-        WHERE id = '$id'";
+        $stmt = $conn->prepare("DELETE FROM TblSupplier WHERE id = ?");
 
-        return mysqli_query($conn, $sql);
+        return $stmt->execute([$id]);
 
     }
 
 }
-?>

@@ -61,7 +61,7 @@ $result = $purchaseModel->getPurchases();
 
             </tr>
 
-            <?php while ($row = mysqli_fetch_assoc($result)) { ?>
+            <?php while ($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
 
                 <tr>
 
@@ -79,13 +79,13 @@ $result = $purchaseModel->getPurchases();
 
                     <td>
 
-                        <?php echo $row['product_name']; ?>
+                        <?php echo $row['productName']; ?>
 
                     </td>
 
                     <td>
 
-                        <?php echo $row['quantity_boxes']; ?>
+                        <?php echo $row['quantityBoxes']; ?>
 
                     </td>
 
@@ -171,7 +171,7 @@ $result = $purchaseModel->getPurchases();
 
                     <td>
 
-                        <?php echo $row['purchase_date']; ?>
+                        <?php echo $row['purchaseDate']; ?>
 
                     </td>
 

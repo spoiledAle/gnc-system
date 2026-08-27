@@ -4,11 +4,13 @@ include_once '../config/database.php';
 
 echo "<h1>Prueba Unitaria - Auditorías</h1>";
 
-$sql = "SELECT * FROM audit_logs";
+$sql = "SELECT * FROM TblAuditLog";
 
-$result = mysqli_query($conn, $sql);
+$result = $conn->query($sql);
 
 if($result) {
+
+    $rows = $result->fetchAll(PDO::FETCH_ASSOC);
 
     echo "
 
@@ -20,7 +22,7 @@ if($result) {
 
     <p>
 
-        La tabla de auditorías es accesible y la consulta fue exitosa. Registros encontrados: " . mysqli_num_rows($result) . "
+        La tabla de auditorías es accesible y la consulta fue exitosa. Registros encontrados: " . count($rows) . "
 
     </p>
 

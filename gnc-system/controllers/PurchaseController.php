@@ -118,7 +118,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['update_status'])) {
 
     // Iniciar transacción de base de datos
     $conn = $purchaseModel->getConnection();
-    mysqli_begin_transaction($conn);
+    $conn->beginTransaction();
 
     try {
         // 1. Registrar compra cabecera
@@ -147,14 +147,14 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['update_status'])) {
         }
 
         // Confirmar transacción (Commit)
-        mysqli_commit($conn);
+        $conn->commit();
 
         header("Location: ../views/purchases/purchases.php");
         exit();
 
     } catch (Exception $e) {
         // Deshacer cambios en caso de error (Rollback)
-        mysqli_rollback($conn);
+        $conn->rollBack();
 
         echo "
         <div style='font-family: sans-serif; padding: 20px; text-align: center;'>

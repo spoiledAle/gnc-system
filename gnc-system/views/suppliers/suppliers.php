@@ -58,7 +58,7 @@ $result = $supplierModel->getSuppliers();
 
             </tr>
 
-            <?php while ($row = mysqli_fetch_assoc($result)) { ?>
+            <?php while ($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
 
                 <tr>
 

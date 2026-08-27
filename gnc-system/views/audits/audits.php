@@ -12,9 +12,9 @@ if(!isset($_SESSION['user'])) {
 
 include_once '../../config/database.php';
 
-$sql = "SELECT * FROM audit_logs ORDER BY action_date DESC";
+$sql = "SELECT * FROM TblAuditLog ORDER BY actionDate DESC";
 
-$result = mysqli_query($conn, $sql);
+$result = $conn->query($sql);
 
 ?>
 
@@ -97,7 +97,7 @@ href="../../assets/css/style.css">
 
         </tr>
 
-        <?php while($row = mysqli_fetch_assoc($result)) { ?>
+        <?php while($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
 
         <tr>
 
@@ -109,19 +109,19 @@ href="../../assets/css/style.css">
 
             <td>
 
-                <?php echo $row['action_type']; ?>
+                <?php echo $row['actionType']; ?>
 
             </td>
 
             <td>
 
-                <?php echo $row['product_name']; ?>
+                <?php echo $row['productName']; ?>
 
             </td>
 
             <td>
 
-                <?php echo $row['action_date']; ?>
+                <?php echo $row['actionDate']; ?>
 
             </td>
 

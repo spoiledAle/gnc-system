@@ -2,59 +2,55 @@
 
 include_once __DIR__ . '/../config/database.php';
 
-class ProductModel {
+class ProductModel
+{
 
-    public function getProducts() {
 
+    public function getProducts()
+    {
         global $conn;
 
-        $sql = "SELECT * FROM products";
+        $stmt = $conn->query("SELECT * FROM TblProduct");
 
-        return mysqli_query($conn, $sql);
-
+        return $stmt;
     }
 
-    public function getProductById($id) {
 
+
+    public function getProductById($id)
+    {
         global $conn;
 
-        $sql = "SELECT * FROM products WHERE id = ?";
+        $stmt = $conn->prepare("SELECT * FROM TblProduct WHERE id = ?");
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt->execute([$id]);
 
-        mysqli_stmt_bind_param($stmt, "i", $id);
-
-        mysqli_stmt_execute($stmt);
-
-        $result = mysqli_stmt_get_result($stmt);
-
-        return mysqli_fetch_assoc($result);
-
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-   public function getLowStockProducts() {
-
-global $conn;
-
-$sql = "SELECT * FROM products
-        WHERE stock < 5
-        AND stock > 0";
-
-return mysqli_query($conn, $sql);
 
 
-}
-
-
-    public function getOutOfStockProducts() {
-
+    public function getLowStockProducts()
+    {
         global $conn;
 
-        $sql = "SELECT * FROM view_out_of_stock_products";
+        $stmt = $conn->query("SELECT * FROM TblProduct WHERE stock < 5 AND stock > 0");
 
-        return mysqli_query($conn, $sql);
-
+        return $stmt;
     }
+
+
+
+    public function getOutOfStockProducts()
+    {
+        global $conn;
+
+        $stmt = $conn->query("SELECT * FROM vOutOfStockProducts");
+
+        return $stmt;
+    }
+
+
 
     public function addProduct(
         $category_id,
@@ -64,34 +60,31 @@ return mysqli_query($conn, $sql);
         $stock,
         $image
     ) {
-
         global $conn;
 
-        $sql = "INSERT INTO products (
-            category_id,
-            name,
-            description,
-            price,
-            stock,
-            image
-        ) VALUES (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO TblProduct (
+                    categoryId,
+                    name,
+                    description,
+                    price,
+                    stock,
+                    image
+                )
+                VALUES (?, ?, ?, ?, ?, ?)";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "issdis",
+        return $stmt->execute([
             $category_id,
             $name,
             $description,
             $price,
             $stock,
-            $image
-        );
-
-        return mysqli_stmt_execute($stmt);
-
+            $image,
+        ]);
     }
+
+
 
     public function updateProduct(
         $id,
@@ -102,71 +95,64 @@ return mysqli_query($conn, $sql);
         $stock,
         $image
     ) {
-
         global $conn;
 
-        $sql = "UPDATE products SET
-            category_id = ?,
-            name = ?,
-            description = ?,
-            price = ?,
-            stock = ?,
-            image = ?
-        WHERE id = ?";
+        $sql = "UPDATE TblProduct
+                SET categoryId = ?,
+                    name = ?,
+                    description = ?,
+                    price = ?,
+                    stock = ?,
+                    image = ?
+                WHERE id = ?";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "issdisi",
+        return $stmt->execute([
             $category_id,
             $name,
             $description,
             $price,
             $stock,
             $image,
-            $id
-        );
-
-        return mysqli_stmt_execute($stmt);
-
+            $id,
+        ]);
     }
 
-    public function deleteProduct($id) {
 
+
+    public function deleteProduct($id)
+    {
         global $conn;
 
-        $sql = "DELETE FROM products WHERE id = ?";
+        $stmt = $conn->prepare("DELETE FROM TblProduct WHERE id = ?");
 
-        $stmt = mysqli_prepare($conn, $sql);
-
-        mysqli_stmt_bind_param($stmt, "i", $id);
-
-        return mysqli_stmt_execute($stmt);
-
+        return $stmt->execute([$id]);
     }
 
-    public function getCategories() {
 
+
+    public function getCategories()
+    {
         global $conn;
 
-        $sql = "SELECT * FROM categories";
+        $stmt = $conn->query("SELECT * FROM TblCategory");
 
-        return mysqli_query($conn, $sql);
-
+        return $stmt;
     }
 
-    public function getProductsByCategory($category_id) {
 
+
+    public function getProductsByCategory($category_id)
+    {
         global $conn;
 
-        $sql = "SELECT * FROM products
-                WHERE category_id = '$category_id'";
+        $stmt = $conn->prepare("SELECT * FROM TblProduct WHERE categoryId = ?");
 
-        return mysqli_query($conn, $sql);
+        $stmt->execute([$category_id]);
 
+        return $stmt;
     }
-
 }
 
 ?>

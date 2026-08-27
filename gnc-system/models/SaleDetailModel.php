@@ -12,19 +12,17 @@ class SaleDetailModel {
 
         global $conn;
 
-        $sql = "CALL register_sale_detail(
-        
-            '$sale_id',
-            '$product_id',
-            '$quantity',
-            '$subtotal'
-        
-        )";
+        $sql = "INSERT INTO TblSaleDetail (
+            saleId,
+            productId,
+            quantity,
+            subtotal
+        ) VALUES (?, ?, ?, ?)";
 
-        return mysqli_query($conn, $sql);
+        $stmt = $conn->prepare($sql);
+
+        return $stmt->execute([$sale_id, $product_id, $quantity, $subtotal]);
 
     }
 
 }
-
-?>

@@ -125,12 +125,12 @@ $categories = $productModel->getCategories();
                     "
                 >
 
-                    <?php while($category = mysqli_fetch_assoc($categories)) { ?>
+                    <?php while($category = $categories->fetch(PDO::FETCH_ASSOC)) { ?>
 
                         <option
                             value="<?php echo $category['id']; ?>"
                             <?php
-                            if($category['id'] == $product['category_id']) {
+                            if($category['id'] == $product['categoryId']) {
                                 echo "selected";
                             }
                             ?>

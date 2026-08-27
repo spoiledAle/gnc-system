@@ -2,7 +2,8 @@
 
 include_once __DIR__ . '/../config/database.php';
 
-class UserModel {
+class UserModel
+{
 
     public function login(
         $email,
@@ -11,27 +12,23 @@ class UserModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM users
+        $stmt = $conn->prepare("SELECT * FROM TblUser WHERE email = ?");
 
-        WHERE email = ?
+        $stmt->execute([$email]);
 
-        AND password = ?";
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $stmt = mysqli_prepare($conn, $sql);
+        if (!$user) {
+            return false;
+        }
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "ss",
-            $email,
-            $password
-        );
+        if (!password_verify($password, $user['password'])) {
+            return false;
+        }
 
-        mysqli_stmt_execute($stmt);
+        unset($user['password']);
 
-        $result = mysqli_stmt_get_result($stmt);
-
-        return mysqli_fetch_assoc($result);
-
+        return $user;
     }
 
     public function register(
@@ -42,26 +39,16 @@ class UserModel {
 
         global $conn;
 
-        $sql = "INSERT INTO users (
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
+        $sql = "INSERT INTO TblUser (
             name,
             email,
             password
         ) VALUES (?, ?, ?)";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "sss",
-            $name,
-            $email,
-            $password
-        );
-
-        return mysqli_stmt_execute($stmt);
-
+        return $stmt->execute([$name, $email, $passwordHash]);
     }
-
 }
-
-?>

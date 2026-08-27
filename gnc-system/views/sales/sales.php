@@ -188,7 +188,7 @@ if (isset($_SESSION['edit_index']) && isset($_SESSION['cart'][$_SESSION['edit_in
                     <div class="form-group">
                         <label>Seleccionar Producto</label>
                         <select name="product_id">
-                            <?php while ($row = mysqli_fetch_assoc($products)) { ?>
+                            <?php while ($row = $products->fetch(PDO::FETCH_ASSOC)) { ?>
                                 <option value="<?php echo $row['id']; ?>" <?php echo ($edit_item && $edit_item['product_id'] == $row['id']) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($row['name']); ?> - Stock: <?php echo $row['stock']; ?>
                                 </option>
@@ -265,7 +265,7 @@ if (isset($_SESSION['edit_index']) && isset($_SESSION['cart'][$_SESSION['edit_in
                             <div class="form-group">
                                 <label>Método de Pago:</label>
                                 <select name="payment_method_id">
-                                    <?php while ($method = mysqli_fetch_assoc($paymentMethods)) { ?>
+                                    <?php while ($method = $paymentMethods->fetch(PDO::FETCH_ASSOC)) { ?>
                                         <option value="<?php echo $method['id']; ?>"><?php echo $method['name']; ?></option>
                                     <?php } ?>
                                 </select>

@@ -162,7 +162,7 @@ if (isset($_POST['finish_sale'])) {
 
     $conn = $saleModel->getConnection();
 
-    mysqli_begin_transaction($conn);
+    $conn->beginTransaction();
 
     try {
 
@@ -220,13 +220,12 @@ if (isset($_POST['finish_sale'])) {
             if (!$detail_inserted) {
 
                 throw new Exception(
-                    "Error al insertar el detalle de la venta: "
-                    . mysqli_error($conn)
+                    "Error al insertar el detalle de la venta."
                 );
             }
         }
 
-        mysqli_commit($conn);
+        $conn->commit();
 
         $_SESSION['cart'] = [];
 
@@ -241,7 +240,7 @@ if (isset($_POST['finish_sale'])) {
 
     } catch (Exception $e) {
 
-        mysqli_rollback($conn);
+        $conn->rollBack();
 
         $_SESSION['error'] = $e->getMessage();
 

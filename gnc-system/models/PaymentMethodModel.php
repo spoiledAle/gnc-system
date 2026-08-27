@@ -8,11 +8,7 @@ class PaymentMethodModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM payment_methods";
-
-        $result = mysqli_query($conn, $sql);
-
-        return $result;
+        return $conn->query("SELECT * FROM TblPaymentMethod");
 
     }
 
@@ -20,11 +16,9 @@ class PaymentMethodModel {
 
         global $conn;
 
-        $sql = "INSERT INTO payment_methods(name)
+        $stmt = $conn->prepare("INSERT INTO TblPaymentMethod (name) VALUES (?)");
 
-        VALUES('$name')";
-
-        return mysqli_query($conn, $sql);
+        return $stmt->execute([$name]);
 
     }
 
@@ -32,16 +26,10 @@ class PaymentMethodModel {
 
         global $conn;
 
-        $sql = "DELETE FROM payment_methods WHERE id = ?";
+        $stmt = $conn->prepare("DELETE FROM TblPaymentMethod WHERE id = ?");
 
-        $stmt = mysqli_prepare($conn, $sql);
-
-        mysqli_stmt_bind_param($stmt, "i", $id);
-
-        return mysqli_stmt_execute($stmt);
+        return $stmt->execute([$id]);
 
     }
 
 }
-
-?>

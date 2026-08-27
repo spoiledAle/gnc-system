@@ -16,9 +16,7 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM view_sales_history";
-
-        return mysqli_query($conn, $sql);
+        return $conn->query("SELECT * FROM vSalesHistory");
 
     }
 
@@ -26,9 +24,7 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM products";
-
-        return mysqli_query($conn, $sql);
+        return $conn->query("SELECT * FROM TblProduct");
 
     }
 
@@ -36,9 +32,7 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM payment_methods";
-
-        return mysqli_query($conn, $sql);
+        return $conn->query("SELECT * FROM TblPaymentMethod");
 
     }
 
@@ -46,19 +40,11 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM products WHERE id = ?";
+        $stmt = $conn->prepare("SELECT * FROM TblProduct WHERE id = ?");
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt->execute([$product_id]);
 
-        mysqli_stmt_bind_param($stmt, "i", $product_id);
-
-        mysqli_stmt_execute($stmt);
-
-        $result = mysqli_stmt_get_result($stmt);
-        $product = mysqli_fetch_assoc($result);
-        
-        mysqli_stmt_close($stmt);
-        return $product;
+        return $stmt->fetch(PDO::FETCH_ASSOC);
 
     }
 
@@ -66,19 +52,11 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM products WHERE id = ? FOR UPDATE";
+        $stmt = $conn->prepare("SELECT * FROM TblProduct WITH (UPDLOCK, ROWLOCK) WHERE id = ?");
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt->execute([$product_id]);
 
-        mysqli_stmt_bind_param($stmt, "i", $product_id);
-
-        mysqli_stmt_execute($stmt);
-
-        $result = mysqli_stmt_get_result($stmt);
-        $product = mysqli_fetch_assoc($result);
-
-        mysqli_stmt_close($stmt);
-        return $product;
+        return $stmt->fetch(PDO::FETCH_ASSOC);
 
     }
 
@@ -90,30 +68,19 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "INSERT INTO sales (
-            user_id,
-            payment_method_id,
+        $sql = "INSERT INTO TblSale (
+            userId,
+            paymentMethodId,
             total,
-            sale_date
-        ) VALUES (?, ?, ?, NOW())";
+            saleDate
+        ) VALUES (?, ?, ?, GETDATE())";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "iid",
-            $user_id,
-            $payment_method_id,
-            $total
-        );
-
-        if (mysqli_stmt_execute($stmt)) {
-            $id = mysqli_insert_id($conn);
-            mysqli_stmt_close($stmt);
-            return $id;
+        if ($stmt->execute([$user_id, $payment_method_id, $total])) {
+            return $conn->lastInsertId();
         }
 
-        mysqli_stmt_close($stmt);
         return false;
 
     }
@@ -127,31 +94,17 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "INSERT INTO sale_details (
-            sale_id,
-            product_id,
+        $sql = "INSERT INTO TblSaleDetail (
+            saleId,
+            productId,
             quantity,
             subtotal
         ) VALUES (?, ?, ?, ?)";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param(
-            $stmt,
-            "iiid",
-            $sale_id,
-            $product_id,
-            $quantity,
-            $subtotal
-        );
-
-        $result = mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
-        
-        return $result;
+        return $stmt->execute([$sale_id, $product_id, $quantity, $subtotal]);
 
     }
 
 }
-
-?>

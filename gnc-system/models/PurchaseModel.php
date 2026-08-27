@@ -13,19 +13,17 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "SELECT purchases.*,
-        
-        suppliers.name AS supplier
-        
-        FROM purchases
-        
-        INNER JOIN suppliers
-        
-        ON purchases.supplier_id = suppliers.id";
+        $sql = "SELECT purchase.*,
 
-        $result = mysqli_query($conn, $sql);
+        supplier.name AS supplier
 
-        return $result;
+        FROM TblPurchase purchase
+
+        INNER JOIN TblSupplier supplier
+
+        ON purchase.supplierId = supplier.id";
+
+        return $conn->query($sql);
 
     }
 
@@ -33,11 +31,7 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM suppliers";
-
-        $result = mysqli_query($conn, $sql);
-
-        return $result;
+        return $conn->query("SELECT * FROM TblSupplier");
 
     }
 
@@ -51,20 +45,18 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "INSERT INTO purchases (
-            supplier_id,
-            product_name,
-            quantity_boxes,
+        $sql = "INSERT INTO TblPurchase (
+            supplierId,
+            productName,
+            quantityBoxes,
             total,
             status
         ) VALUES (?, ?, ?, ?, ?)";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param($stmt, "isids", $supplier_id, $product_name, $quantity_boxes, $total, $status);
-
-        if (mysqli_stmt_execute($stmt)) {
-            return mysqli_insert_id($conn);
+        if ($stmt->execute([$supplier_id, $product_name, $quantity_boxes, $total, $status])) {
+            return $conn->lastInsertId();
         }
 
         return false;
@@ -80,18 +72,16 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "INSERT INTO purchase_details (
-            purchase_id,
-            product_id,
+        $sql = "INSERT INTO TblPurchaseDetail (
+            purchaseId,
+            productId,
             quantity,
             subtotal
         ) VALUES (?, ?, ?, ?)";
 
-        $stmt = mysqli_prepare($conn, $sql);
+        $stmt = $conn->prepare($sql);
 
-        mysqli_stmt_bind_param($stmt, "iiid", $purchase_id, $product_id, $quantity, $subtotal);
-
-        return mysqli_stmt_execute($stmt);
+        return $stmt->execute([$purchase_id, $product_id, $quantity, $subtotal]);
 
     }
 
@@ -102,15 +92,10 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "UPDATE purchases SET status = ? WHERE id = ?";
+        $stmt = $conn->prepare("UPDATE TblPurchase SET status = ? WHERE id = ?");
 
-        $stmt = mysqli_prepare($conn, $sql);
-
-        mysqli_stmt_bind_param($stmt, "si", $status, $id);
-
-        return mysqli_stmt_execute($stmt);
+        return $stmt->execute([$status, $id]);
 
     }
 
 }
-?>

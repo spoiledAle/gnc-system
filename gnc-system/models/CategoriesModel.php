@@ -7,9 +7,7 @@ class ProductModel {
 
         global $conn;
 
-        $sql = "SELECT * FROM products";
-
-        $result = mysqli_query($conn, $sql);
+        $result = $conn->query("SELECT * FROM TblProduct");
 
         return $result;
     }
