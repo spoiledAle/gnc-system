@@ -130,7 +130,7 @@ $categories = $productModel->getCategories();
                         <option
                             value="<?php echo $category['id']; ?>"
                             <?php
-                            if($category['id'] == $product['categoryId']) {
+                            if($category['id'] == $product['category_id']) {
                                 echo "selected";
                             }
                             ?>

@@ -82,19 +82,19 @@ $sales = $saleModel->getSales();
 
                     <td>
 
-                        <?php echo $row['id']; ?>
+                        <?php echo $row['venta_id']; ?>
 
                     </td>
 
                     <td>
 
-                        <?php echo $row['productName']; ?>
+                        <?php echo $row['producto']; ?>
 
                     </td>
 
                     <td>
 
-                        <?php echo $row['quantity']; ?>
+                        <?php echo $row['cantidad']; ?>
 
                     </td>
 
@@ -106,7 +106,7 @@ $sales = $saleModel->getSales();
 
                     <td>
 
-                        <?php echo $row['userName']; ?>
+                        <?php echo $row['usuario']; ?>
 
                     </td>
 

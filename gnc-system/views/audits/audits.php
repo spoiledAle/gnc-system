@@ -12,7 +12,7 @@ if(!isset($_SESSION['user'])) {
 
 include_once '../../config/database.php';
 
-$sql = "SELECT * FROM TblAuditLog ORDER BY actionDate DESC";
+$sql = "SELECT * FROM tbl_auditLogs ORDER BY action_date DESC";
 
 $result = $conn->query($sql);
 
@@ -109,19 +109,19 @@ href="../../assets/css/style.css">
 
             <td>
 
-                <?php echo $row['actionType']; ?>
+                <?php echo $row['action_type']; ?>
 
             </td>
 
             <td>
 
-                <?php echo $row['productName']; ?>
+                <?php echo $row['product_name']; ?>
 
             </td>
 
             <td>
 
-                <?php echo $row['actionDate']; ?>
+                <?php echo $row['action_date']; ?>
 
             </td>
 

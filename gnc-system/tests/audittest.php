@@ -4,7 +4,7 @@ include_once '../config/database.php';
 
 echo "<h1>Prueba Unitaria - Auditorías</h1>";
 
-$sql = "SELECT * FROM TblAuditLog";
+$sql = "SELECT * FROM tbl_auditLogs";
 
 $result = $conn->query($sql);
 

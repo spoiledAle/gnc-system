@@ -16,7 +16,7 @@ class SaleModel {
 
         global $conn;
 
-        return $conn->query("SELECT * FROM vSalesHistory");
+        return $conn->query("SELECT * FROM v_historialVentas");
 
     }
 
@@ -24,7 +24,7 @@ class SaleModel {
 
         global $conn;
 
-        return $conn->query("SELECT * FROM TblProduct");
+        return $conn->query("SELECT * FROM tbl_products");
 
     }
 
@@ -32,7 +32,7 @@ class SaleModel {
 
         global $conn;
 
-        return $conn->query("SELECT * FROM TblPaymentMethod");
+        return $conn->query("SELECT * FROM tbl_paymentMethods");
 
     }
 
@@ -40,7 +40,7 @@ class SaleModel {
 
         global $conn;
 
-        $stmt = $conn->prepare("SELECT * FROM TblProduct WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM tbl_products WHERE id = ?");
 
         $stmt->execute([$product_id]);
 
@@ -52,7 +52,7 @@ class SaleModel {
 
         global $conn;
 
-        $stmt = $conn->prepare("SELECT * FROM TblProduct WITH (UPDLOCK, ROWLOCK) WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM tbl_products WITH (UPDLOCK, ROWLOCK) WHERE id = ?");
 
         $stmt->execute([$product_id]);
 
@@ -68,11 +68,11 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "INSERT INTO TblSale (
-            userId,
-            paymentMethodId,
+        $sql = "INSERT INTO tbl_sales (
+            user_id,
+            payment_method_id,
             total,
-            saleDate
+            sale_date
         ) VALUES (?, ?, ?, GETDATE())";
 
         $stmt = $conn->prepare($sql);
@@ -94,9 +94,9 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "INSERT INTO TblSaleDetail (
-            saleId,
-            productId,
+        $sql = "INSERT INTO tbl_saleDetails (
+            sale_id,
+            product_id,
             quantity,
             subtotal
         ) VALUES (?, ?, ?, ?)";

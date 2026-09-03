@@ -79,13 +79,13 @@ $result = $purchaseModel->getPurchases();
 
                     <td>
 
-                        <?php echo $row['productName']; ?>
+                        <?php echo $row['product_name']; ?>
 
                     </td>
 
                     <td>
 
-                        <?php echo $row['quantityBoxes']; ?>
+                        <?php echo $row['quantity_boxes']; ?>
 
                     </td>
 
@@ -171,7 +171,7 @@ $result = $purchaseModel->getPurchases();
 
                     <td>
 
-                        <?php echo $row['purchaseDate']; ?>
+                        <?php echo $row['purchase_date']; ?>
 
                     </td>
 

@@ -7,7 +7,7 @@ class ProductModel {
 
         global $conn;
 
-        $result = $conn->query("SELECT * FROM TblProduct");
+        $result = $conn->query("SELECT * FROM tbl_products");
 
         return $result;
     }

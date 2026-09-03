@@ -12,7 +12,7 @@ class UserModel
 
         global $conn;
 
-        $stmt = $conn->prepare("SELECT * FROM TblUser WHERE email = ?");
+        $stmt = $conn->prepare("SELECT * FROM tbl_users WHERE email = ?");
 
         $stmt->execute([$email]);
 
@@ -41,7 +41,7 @@ class UserModel
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-        $sql = "INSERT INTO TblUser (
+        $sql = "INSERT INTO tbl_users (
             name,
             email,
             password

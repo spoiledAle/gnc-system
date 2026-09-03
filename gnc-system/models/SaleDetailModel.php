@@ -12,9 +12,9 @@ class SaleDetailModel {
 
         global $conn;
 
-        $sql = "INSERT INTO TblSaleDetail (
-            saleId,
-            productId,
+        $sql = "INSERT INTO tbl_saleDetails (
+            sale_id,
+            product_id,
             quantity,
             subtotal
         ) VALUES (?, ?, ?, ?)";

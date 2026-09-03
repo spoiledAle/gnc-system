@@ -10,9 +10,7 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->query("SELECT * FROM TblProduct");
-
-        return $stmt;
+        return $conn->query("SELECT * FROM tbl_products");
     }
 
 
@@ -21,7 +19,7 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->prepare("SELECT * FROM TblProduct WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM tbl_products WHERE id = ?");
 
         $stmt->execute([$id]);
 
@@ -34,9 +32,7 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->query("SELECT * FROM TblProduct WHERE stock < 5 AND stock > 0");
-
-        return $stmt;
+        return $conn->query("SELECT * FROM tbl_products WHERE stock < 5 AND stock > 0");
     }
 
 
@@ -45,9 +41,7 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->query("SELECT * FROM vOutOfStockProducts");
-
-        return $stmt;
+        return $conn->query("SELECT * FROM tbl_products WHERE stock = 0");
     }
 
 
@@ -62,17 +56,7 @@ class ProductModel
     ) {
         global $conn;
 
-        $sql = "INSERT INTO TblProduct (
-                    categoryId,
-                    name,
-                    description,
-                    price,
-                    stock,
-                    image
-                )
-                VALUES (?, ?, ?, ?, ?, ?)";
-
-        $stmt = $conn->prepare($sql);
+        $stmt = $conn->prepare("{CALL pa_insertarProducto(?, ?, ?, ?, ?, ?)}");
 
         return $stmt->execute([
             $category_id,
@@ -97,25 +81,16 @@ class ProductModel
     ) {
         global $conn;
 
-        $sql = "UPDATE TblProduct
-                SET categoryId = ?,
-                    name = ?,
-                    description = ?,
-                    price = ?,
-                    stock = ?,
-                    image = ?
-                WHERE id = ?";
-
-        $stmt = $conn->prepare($sql);
+        $stmt = $conn->prepare("{CALL pa_actualizarProducto(?, ?, ?, ?, ?, ?, ?)}");
 
         return $stmt->execute([
+            $id,
             $category_id,
             $name,
             $description,
             $price,
             $stock,
             $image,
-            $id,
         ]);
     }
 
@@ -125,7 +100,7 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->prepare("DELETE FROM TblProduct WHERE id = ?");
+        $stmt = $conn->prepare("{CALL pa_eliminarProducto(?)}");
 
         return $stmt->execute([$id]);
     }
@@ -136,9 +111,7 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->query("SELECT * FROM TblCategory");
-
-        return $stmt;
+        return $conn->query("SELECT * FROM tbl_categories");
     }
 
 
@@ -147,12 +120,10 @@ class ProductModel
     {
         global $conn;
 
-        $stmt = $conn->prepare("SELECT * FROM TblProduct WHERE categoryId = ?");
+        $stmt = $conn->prepare("SELECT * FROM tbl_products WHERE category_id = ?");
 
         $stmt->execute([$category_id]);
 
         return $stmt;
     }
 }
-
-?>

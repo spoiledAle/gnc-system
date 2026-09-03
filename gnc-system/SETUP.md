@@ -53,10 +53,10 @@ extensiones: `pdo_sqlsrv` y `sqlsrv`.
    Authentication", sin usuario/contraseña).
 2. Abre el archivo [`database/gncproyecto_sqlserver.sql`](database/gncproyecto_sqlserver.sql)
    de este repositorio.
-3. Ejecútalo completo (F5). Esto crea la base `GNCPROYECTO`, todas las
-   tablas (`Tbl*`), las vistas, el procedimiento almacenado y los
-   disparadores (`Dis*`), y carga los datos de ejemplo (incluye 3 usuarios
-   de prueba, ver abajo).
+3. Ejecútalo completo (F5). Esto crea la base `gncproyecto`, todas las
+   tablas (`tbl_*`), las vistas (`v_*`), los procedimientos almacenados
+   (`pa_*`) y los disparadores (`dis_*`), y carga los datos de ejemplo
+   (incluye 1 usuario de prueba, ver abajo).
 
 ## 4. Configurar la conexión
 
@@ -93,12 +93,11 @@ Alternativa: simplemente clona/copia el proyecto directo dentro de
 2. Asegúrate de que el servicio de SQL Server esté corriendo.
 3. Abre `http://localhost/gnc-system/views/login.php`.
 
-Usuarios de prueba que ya están cargados (solo para desarrollo local):
+Usuario de prueba que ya está cargado (solo para desarrollo local):
 
 | Email | Contraseña |
 |---|---|
 | 2acteam@gmail.com | 2ac |
-| alegrodriguez78@gmail.com | Alessandro1234 |
 
 ## Problemas comunes
 

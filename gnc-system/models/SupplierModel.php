@@ -8,14 +8,14 @@ class SupplierModel {
 
         global $conn;
 
-        return $conn->query("SELECT * FROM TblSupplier");
+        return $conn->query("SELECT * FROM tbl_suppliers");
 
     }
 
     public function getSupplierById($id) {
 
         global $conn;
-        $stmt = $conn->prepare("SELECT * FROM TblSupplier WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM tbl_suppliers WHERE id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -27,7 +27,7 @@ class SupplierModel {
         $address
     ) {
         global $conn;
-        $stmt = $conn->prepare("INSERT INTO TblSupplier (name, phone, email, address) VALUES (?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO tbl_suppliers (name, phone, email, address) VALUES (?, ?, ?, ?)");
         return $stmt->execute([$name, $phone, $email, $address]);
     }
 
@@ -41,7 +41,7 @@ class SupplierModel {
 
         global $conn;
 
-        $sql = "UPDATE TblSupplier SET
+        $sql = "UPDATE tbl_suppliers SET
                 name = ?,
                 phone = ?,
                 email = ?,
@@ -58,7 +58,7 @@ class SupplierModel {
 
         global $conn;
 
-        $stmt = $conn->prepare("DELETE FROM TblSupplier WHERE id = ?");
+        $stmt = $conn->prepare("DELETE FROM tbl_suppliers WHERE id = ?");
 
         return $stmt->execute([$id]);
 

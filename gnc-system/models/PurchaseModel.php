@@ -17,11 +17,11 @@ class PurchaseModel {
 
         supplier.name AS supplier
 
-        FROM TblPurchase purchase
+        FROM tbl_purchases purchase
 
-        INNER JOIN TblSupplier supplier
+        INNER JOIN tbl_suppliers supplier
 
-        ON purchase.supplierId = supplier.id";
+        ON purchase.supplier_id = supplier.id";
 
         return $conn->query($sql);
 
@@ -31,7 +31,7 @@ class PurchaseModel {
 
         global $conn;
 
-        return $conn->query("SELECT * FROM TblSupplier");
+        return $conn->query("SELECT * FROM tbl_suppliers");
 
     }
 
@@ -45,10 +45,10 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "INSERT INTO TblPurchase (
-            supplierId,
-            productName,
-            quantityBoxes,
+        $sql = "INSERT INTO tbl_purchases (
+            supplier_id,
+            product_name,
+            quantity_boxes,
             total,
             status
         ) VALUES (?, ?, ?, ?, ?)";
@@ -72,9 +72,9 @@ class PurchaseModel {
 
         global $conn;
 
-        $sql = "INSERT INTO TblPurchaseDetail (
-            purchaseId,
-            productId,
+        $sql = "INSERT INTO tbl_purchaseDetails (
+            purchase_id,
+            product_id,
             quantity,
             subtotal
         ) VALUES (?, ?, ?, ?)";
@@ -92,7 +92,7 @@ class PurchaseModel {
 
         global $conn;
 
-        $stmt = $conn->prepare("UPDATE TblPurchase SET status = ? WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE tbl_purchases SET status = ? WHERE id = ?");
 
         return $stmt->execute([$status, $id]);
 

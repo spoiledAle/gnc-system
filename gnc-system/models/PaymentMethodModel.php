@@ -8,7 +8,7 @@ class PaymentMethodModel {
 
         global $conn;
 
-        return $conn->query("SELECT * FROM TblPaymentMethod");
+        return $conn->query("SELECT * FROM tbl_paymentMethods");
 
     }
 
@@ -16,7 +16,7 @@ class PaymentMethodModel {
 
         global $conn;
 
-        $stmt = $conn->prepare("INSERT INTO TblPaymentMethod (name) VALUES (?)");
+        $stmt = $conn->prepare("INSERT INTO tbl_paymentMethods (name) VALUES (?)");
 
         return $stmt->execute([$name]);
 
@@ -26,7 +26,7 @@ class PaymentMethodModel {
 
         global $conn;
 
-        $stmt = $conn->prepare("DELETE FROM TblPaymentMethod WHERE id = ?");
+        $stmt = $conn->prepare("DELETE FROM tbl_paymentMethods WHERE id = ?");
 
         return $stmt->execute([$id]);
 
