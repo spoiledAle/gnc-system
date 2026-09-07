@@ -19,6 +19,7 @@ class ProductModel
     {
         global $conn;
 
+
         $stmt = $conn->prepare("SELECT * FROM tbl_products WHERE id = ?");
 
         $stmt->execute([$id]);
@@ -56,6 +57,7 @@ class ProductModel
     ) {
         global $conn;
 
+
         $stmt = $conn->prepare("{CALL pa_insertarProducto(?, ?, ?, ?, ?, ?)}");
 
         return $stmt->execute([
@@ -81,6 +83,7 @@ class ProductModel
     ) {
         global $conn;
 
+
         $stmt = $conn->prepare("{CALL pa_actualizarProducto(?, ?, ?, ?, ?, ?, ?)}");
 
         return $stmt->execute([
@@ -99,6 +102,7 @@ class ProductModel
     public function deleteProduct($id)
     {
         global $conn;
+
 
         $stmt = $conn->prepare("{CALL pa_eliminarProducto(?)}");
 
@@ -119,6 +123,7 @@ class ProductModel
     public function getProductsByCategory($category_id)
     {
         global $conn;
+
 
         $stmt = $conn->prepare("SELECT * FROM tbl_products WHERE category_id = ?");
 
