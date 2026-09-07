@@ -18,6 +18,7 @@ CREATE TABLE dbo.tbl_auditLogs (
     id            INT IDENTITY(1,1) NOT NULL,
     action_type   VARCHAR(50)  NULL,
     product_name  VARCHAR(100) NULL,
+    user_id       INT          NULL,
     action_date   DATETIME     NULL DEFAULT GETDATE(),
     CONSTRAINT PK_audit_logs PRIMARY KEY (id)
 );
@@ -68,6 +69,11 @@ CREATE TABLE dbo.tbl_users (
     CONSTRAINT PK_users PRIMARY KEY (id),
     CONSTRAINT UQ_users_email UNIQUE (email)
 );
+GO
+
+-- El usuario que realizó cada acción registrada en la auditoría.
+ALTER TABLE dbo.tbl_auditLogs
+    ADD CONSTRAINT fk_auditLogs_user FOREIGN KEY (user_id) REFERENCES dbo.tbl_users (id);
 GO
 
 -- Tabla: tbl_products
@@ -762,8 +768,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
-    SELECT 'INSERT', name
+    INSERT INTO dbo.tbl_auditLogs (action_type, product_name, user_id)
+    SELECT 'INSERT', name, TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT)
     FROM inserted;
 END
 GO
@@ -777,8 +783,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
-    SELECT 'UPDATE', name
+    INSERT INTO dbo.tbl_auditLogs (action_type, product_name, user_id)
+    SELECT 'UPDATE', name, TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT)
     FROM inserted;
 END
 GO
@@ -792,8 +798,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
-    SELECT 'DELETE', name
+    INSERT INTO dbo.tbl_auditLogs (action_type, product_name, user_id)
+    SELECT 'DELETE', name, TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT)
     FROM deleted;
 END
 GO

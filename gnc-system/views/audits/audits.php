@@ -12,9 +12,14 @@ if(!isset($_SESSION['user'])) {
 
 include_once '../../config/database.php';
 
-$sql = "SELECT * FROM tbl_auditLogs ORDER BY action_date DESC";
+$sql = "SELECT a.*, u.name AS user_name
+        FROM tbl_auditLogs a
+        LEFT JOIN tbl_users u ON a.user_id = u.id
+        ORDER BY a.action_date DESC";
 
 $result = $conn->query($sql);
+
+$numero = $conn->query("SELECT COUNT(*) FROM tbl_auditLogs")->fetchColumn();
 
 ?>
 
@@ -87,11 +92,13 @@ href="../../assets/css/style.css">
 
         <tr>
 
-            <th>ID</th>
+            <th>No.</th>
 
             <th>Acción</th>
 
             <th>Producto</th>
+
+            <th>Usuario</th>
 
             <th>Fecha</th>
 
@@ -103,7 +110,7 @@ href="../../assets/css/style.css">
 
             <td>
 
-                <?php echo $row['id']; ?>
+                <?php echo $numero--; ?>
 
             </td>
 
@@ -116,6 +123,12 @@ href="../../assets/css/style.css">
             <td>
 
                 <?php echo $row['product_name']; ?>
+
+            </td>
+
+            <td>
+
+                <?php echo $row['user_name'] ?? 'Desconocido'; ?>
 
             </td>
 
