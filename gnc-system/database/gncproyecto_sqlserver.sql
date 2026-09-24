@@ -1244,3 +1244,255 @@ BEGIN
 
 END
 GO
+
+/*================ FUNCIONES ================*/
+
+/* ============================================================
+   FUNCIÓN ESCALAR 1: fn_valorInventarioProducto
+
+   Descripción:
+   Calcula cuánto vale el inventario disponible de un producto,
+   multiplicando su precio por las unidades que hay en stock.
+
+   Importancia o utilidad:
+   Permite conocer el valor monetario almacenado de cada producto.
+   Puede utilizarse en reportes de inventario y para identificar
+   productos que representan una mayor inversión.
+   ============================================================ */
+
+CREATE OR ALTER FUNCTION dbo.fn_valorInventarioProducto
+(
+    @productId INT 
+)
+RETURNS DECIMAL(18,2) 
+AS
+BEGIN
+    DECLARE @valor DECIMAL(18,2);
+
+    SELECT @valor = CAST(price * stock AS DECIMAL(18,2))
+    FROM dbo.tbl_products
+    WHERE id = @productId;
+
+
+    RETURN @valor;
+END;
+GO
+
+
+/* ============================================================
+   FUNCIÓN ESCALAR 2: fn_unidadesVendidasProducto
+
+   Descripción:
+   Calcula el total de unidades vendidas de un producto.
+
+   Importancia o utilidad:
+   Ayuda a medir la demanda de cada producto. Esta información
+   puede apoyar decisiones de compra, reposición de inventario
+   y análisis de productos más vendidos.
+   ============================================================ */
+
+CREATE OR ALTER FUNCTION dbo.fn_unidadesVendidasProducto
+
+(
+    @productId INT 
+)
+RETURNS INT 
+AS
+BEGIN
+    DECLARE @cantidad INT;
+
+    SELECT @cantidad = SUM(quantity)
+    FROM dbo.tbl_saleDetails
+    WHERE product_id = @productId;
+
+    RETURN COALESCE(@cantidad, 0);
+END;
+GO
+
+
+/* ============================================================
+   FUNCIÓN DE TABLA DE VARIAS INSTRUCCIONES 1:
+   fn_productosBajoLimite
+
+   Descripción:
+   Devuelve los productos cuyo stock es menor que un límite
+   indicado e informa cuántas unidades faltan para alcanzarlo.
+
+   Importancia o utilidad:
+   Ayuda a detectar productos que necesitan reposición y a
+   calcular cuántas unidades habría que adquirir para llegar
+   al nivel de inventario elegido.
+   ============================================================ */
+
+CREATE OR ALTER FUNCTION dbo.fn_productosBajoLimite
+
+(
+    @limite INT 
+)
+RETURNS @resultado TABLE
+(
+    productId INT,          
+    producto VARCHAR(100),  
+    categoria VARCHAR(100), 
+    stock INT,            
+    faltantes INT          
+)
+AS
+BEGIN
+    INSERT INTO @resultado
+        (productId, producto, categoria, stock, faltantes)
+    SELECT
+        p.id,                 
+        p.name,                 
+        c.name,                 
+        p.stock,               
+        @limite - p.stock     
+    FROM dbo.tbl_products AS p
+    INNER JOIN dbo.tbl_categories AS c
+        ON c.id = p.category_id
+    WHERE p.stock < @limite;
+
+    RETURN;
+    
+END;
+GO
+
+
+/* ============================================================
+   FUNCIÓN DE TABLA DE VARIAS INSTRUCCIONES 2:
+   fn_resumenVentasPeriodo
+
+   Descripción:
+   Presenta las unidades y el monto vendido de cada producto
+   durante un intervalo de fechas.
+
+   Importancia o utilidad:
+   Permite analizar el desempeño de los productos en un período
+   específico, por ejemplo, durante un día, mes o trimestre.
+   Esto facilita la elaboración de reportes de ventas.
+   ============================================================ */
+
+CREATE OR ALTER FUNCTION dbo.fn_resumenVentasPeriodo
+(
+    @fechaInicio DATE, 
+    @fechaFin DATE     
+)
+RETURNS @resultado TABLE
+
+(
+    productId INT,                  
+    producto VARCHAR(100),           
+    unidadesVendidas INT,            
+    montoVendido DECIMAL(18,2)       
+)
+AS
+BEGIN
+    INSERT INTO @resultado
+        (productId, producto, unidadesVendidas, montoVendido)
+
+    SELECT
+        p.id,                              
+        p.name,                         
+        SUM(sd.quantity),                  
+        SUM(CAST(sd.subtotal AS DECIMAL(18,2)))
+    FROM dbo.tbl_saleDetails AS sd
+    INNER JOIN dbo.tbl_sales AS s
+        ON s.id = sd.sale_id
+    INNER JOIN dbo.tbl_products AS p
+        ON p.id = sd.product_id
+    WHERE s.sale_date >= @fechaInicio
+      AND s.sale_date < DATEADD(DAY, 1, @fechaFin)
+    GROUP BY p.id, p.name;
+
+    RETURN;
+END;
+GO
+
+
+/* ============================================================
+   FUNCIÓN DE TABLA EN LÍNEA 1: fn_productosPorCategoria
+
+   Descripción:
+   Devuelve los productos que pertenecen a una categoría
+   específica, junto con su precio y stock.
+
+   Importancia o utilidad:
+   Permite reutilizar el filtro por categoría en consultas
+   de inventario o en pantallas donde se muestran productos
+   según la categoría seleccionada.
+   ============================================================ */
+
+CREATE OR ALTER FUNCTION dbo.fn_productosPorCategoria
+(
+    @categoryId INT 
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT
+        p.id AS productId,     
+        p.name AS producto,    
+        c.name AS categoria,   
+        p.price AS precio,     
+        p.stock                
+    FROM dbo.tbl_products AS p
+    INNER JOIN dbo.tbl_categories AS c
+        ON c.id = p.category_id
+    WHERE p.category_id = @categoryId
+);
+
+GO
+
+
+/* ============================================================
+   FUNCIÓN DE TABLA EN LÍNEA 2: fn_detalleVenta
+
+   Descripción:
+   Muestra los productos, cantidades, subtotales, fecha
+   y método de pago de una venta determinada.
+
+   Importancia o utilidad:
+   Facilita consultar el detalle de una venta usando solamente
+   su ID. Puede utilizarse para revisar transacciones, generar
+   comprobantes o atender consultas sobre ventas anteriores.
+   ============================================================ */
+
+CREATE OR ALTER FUNCTION dbo.fn_detalleVenta
+(
+    @saleId INT 
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT
+        s.id AS saleId,                 
+        s.sale_date AS fechaVenta,      
+        p.name AS producto,           
+        sd.quantity AS cantidad,        
+        sd.subtotal,                    
+        pm.name AS metodoPago         
+    FROM dbo.tbl_sales AS s
+    INNER JOIN dbo.tbl_saleDetails AS sd
+        ON sd.sale_id = s.id
+    INNER JOIN dbo.tbl_products AS p
+        ON p.id = sd.product_id
+    INNER JOIN dbo.tbl_paymentMethods AS pm
+        ON pm.id = s.payment_method_id
+    WHERE s.id = @saleId
+);
+
+GO
+
+--Escalar consulta
+SELECT dbo.fn_valorInventarioProducto(5) AS valorInventario;
+SELECT dbo.fn_unidadesVendidasProducto(5) AS unidadesVendidas;
+
+--De varias instrucciones consultas
+SELECT * FROM dbo.fn_productosBajoLimite(5);
+SELECT * FROM dbo.fn_resumenVentasPeriodo('2026-06-01', '2026-06-30');
+
+--En linea consultas
+SELECT * FROM dbo.fn_productosPorCategoria(1);
+SELECT * FROM dbo.fn_detalleVenta(5);
