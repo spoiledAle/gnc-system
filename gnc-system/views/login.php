@@ -1,121 +1,139 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/../config/session.php';
 
-if(isset($_SESSION['user'])) {
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
-    header("Location: home.php");
+$activeSession =
+    isset(
+        $_SESSION['user'],
+        $_SESSION['dbCredentials'],
+        $_SESSION['timeout']
+    )
+    && time() - (int) $_SESSION['timeout'] < 300;
 
-    exit();
-
+if ($activeSession) {
+    header('Location: home.php');
+    exit;
 }
 
-?>
+unset(
+    $_SESSION['user'],
+    $_SESSION['dbCredentials'],
+    $_SESSION['timeout'],
+    $_SESSION['cart'],
+    $_SESSION['checkoutToken'],
+    $_SESSION['edit_index']
+);
 
+if (!isset($_SESSION['csrfToken'])) {
+    $_SESSION['csrfToken'] = bin2hex(random_bytes(32));
+}
+
+$error = $_GET['error'] ?? '';
+
+$registeredUsername = $_SESSION['registeredUsername'] ?? null;
+unset($_SESSION['registeredUsername']);
+
+?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>GNC Login</title>
-
     <link rel="stylesheet" href="../assets/css/style.css">
-
 </head>
 
 <body class="auth-body">
-
-    <div class="login-box">
-
+    <main class="login-box">
         <img
-        src="../assets/images/GNC_Logo.svg.png"
-        alt="GNC Logo">
+            src="../assets/images/GNC_Logo.svg.png"
+            alt="GNC Logo"
+        >
 
-        <h1>
+        <h1>Iniciar sesión</h1>
 
-            Iniciar Sesión
-
-        </h1>
-
-        <?php if(isset($_GET['success'])) { ?>
-            <div class="alert alert-success">
-                ✓ Usuario registrado correctamente
+        <?php if (is_string($registeredUsername)): ?>
+            <div class="alert alert-success" role="status">
+                Cuenta creada. Inicia sesión con:
+                <strong>
+                    <?= htmlspecialchars(
+                        $registeredUsername,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>
+                </strong>
             </div>
-        <?php } ?>
+        <?php endif; ?>
 
-        <?php if(isset($_GET['error']) && $_GET['error'] == 1) { ?>
-            <div class="alert alert-error">
-                ✕ Correo o contraseña incorrectos
+        <?php if ($error === '1'): ?>
+            <div class="alert alert-error" role="alert">
+                Usuario o contraseña incorrectos,
+                o cuenta sin acceso.
             </div>
-        <?php } ?>
+        <?php elseif ($error === '2'): ?>
+            <div class="alert alert-warning" role="alert">
+                Completa correctamente todos los campos.
+            </div>
+        <?php endif; ?>
 
-        <?php if(isset($_GET['error']) && $_GET['error'] == 2) { ?>
-            <div class="alert alert-warning">
-                ⚠ Todos los campos son obligatorios
+        <?php if (isset($_GET['expired'])): ?>
+            <div class="alert alert-warning" role="status">
+                Tu sesión expiró. Inicia sesión nuevamente.
             </div>
-        <?php } ?>
+        <?php endif; ?>
 
         <form
-        action="../controllers/LoginController.php"
-        method="POST">
+            action="../controllers/Logincontroller.php"
+            method="POST"
+        >
+            <input
+                type="hidden"
+                name="csrfToken"
+                value="<?= htmlspecialchars(
+                    $_SESSION['csrfToken'],
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>"
+            >
 
             <div class="input-group">
-
-                <label for="email">
-
-                    Correo Electrónico
-
-                </label>
-
+                <label for="username">Usuario</label>
                 <input
-                type="email"
-                id="email"
-                name="email"
-                required>
-
+                    type="text"
+                    id="username"
+                    name="username"
+                    maxlength="128"
+                    autocomplete="username"
+                    required
+                >
             </div>
 
             <div class="input-group">
-
-                <label for="password">
-
-                    Contraseña
-
-                </label>
-
+                <label for="password">Contraseña</label>
                 <input
-                type="password"
-                id="password"
-                name="password"
-                required>
-
+                    type="password"
+                    id="password"
+                    name="password"
+                    autocomplete="current-password"
+                    required
+                >
             </div>
 
             <button
-            type="submit"
-            class="login-btn btn add-btn">
-
-                Entrar al Sistema
-
+                type="submit"
+                class="login-btn btn add-btn"
+            >
+                Entrar al sistema
             </button>
-
         </form>
 
         <div class="register-link">
-
-            <a href="register.php">
-
-                Crear nuevo usuario administrativo
-
-            </a>
-
+            <a href="register.php">Crear cuenta</a>
         </div>
-
-    </div>
-
+    </main>
 </body>
-
 </html>
