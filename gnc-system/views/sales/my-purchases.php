@@ -44,27 +44,32 @@ try {
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body>
-<div class="navbar">
-    <a class="logo" href="../home.php">
-        <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC">
-    </a>
-    <a class="btn" href="../logout.php">Cerrar sesión</a>
-</div>
+<?php
+$currentPage = 'my-purchases';
+$basePath = '../';
+include __DIR__ . '/../partials/navbar.php';
+?>
 
 <main class="container">
-    <h1>Mis compras</h1>
-    <a class="btn" href="../home.php">Volver</a>
-    <a class="btn add-btn" href="sales.php">Comprar productos</a>
+    <h1 class="title">Mis compras</h1>
+    <p class="subtitle">Consulta tus compras realizadas y el detalle de cada pedido.</p>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="../home.php">← Volver</a>
+        <a class="btn add-btn" href="sales.php">Comprar productos</a>
+    </div>
 
     <?php if (isset($_SESSION['success'])): ?>
-        <p role="status"><?= gncEscape($_SESSION['success']) ?></p>
+        <div class="alert alert-success" role="status">
+            <?= gncEscape($_SESSION['success']) ?>
+        </div>
         <?php unset($_SESSION['success']); ?>
     <?php endif; ?>
 
     <?php if (!$purchases): ?>
-        <p>Aún no tienes compras registradas.</p>
+        <p style="color: var(--gnc-text-secondary); margin-top: 20px;">Aún no tienes compras registradas.</p>
     <?php else: ?>
-        <div style="overflow: auto">
+        <div class="table-responsive">
             <table>
                 <thead>
                 <tr>
@@ -95,26 +100,28 @@ try {
     <?php endif; ?>
 
     <?php if ($purchase): ?>
-        <h2>Detalle de la compra #<?= (int) $purchase['id'] ?></h2>
+        <h2 style="margin-top: 35px; margin-bottom: 15px;">Detalle de la compra #<?= (int) $purchase['id'] ?></h2>
 
-        <table>
-            <thead>
-            <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Subtotal</th>
-            </tr>
-            </thead>
-            <tbody>
-            <?php foreach ($details as $row): ?>
+        <div class="table-responsive">
+            <table>
+                <thead>
                 <tr>
-                    <td><?= gncEscape($row['product_name']) ?></td>
-                    <td><?= (int) $row['quantity'] ?></td>
-                    <td>₡<?= number_format((float) $row['subtotal'], 2) ?></td>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
                 </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                <?php foreach ($details as $row): ?>
+                    <tr>
+                        <td><?= gncEscape($row['product_name']) ?></td>
+                        <td><?= (int) $row['quantity'] ?></td>
+                        <td>₡<?= number_format((float) $row['subtotal'], 2) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     <?php endif; ?>
 </main>
 </body>
