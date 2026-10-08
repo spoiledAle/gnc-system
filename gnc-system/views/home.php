@@ -13,50 +13,26 @@ $isAdmin = $role === 'ADMIN';
 $isEmployee = $role === 'EMPLEADO';
 $isCustomer = $role === 'CLIENTE';
 
-$name = $_SESSION['user']['name'] ?? 'Usuario';
-
 $historyUrl = $isCustomer
     ? 'sales/my-purchases.php'
     : 'sales/sales-history.php';
 
-function escapeHome(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GNC System</title>
-
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
 <body>
-    <div class="navbar">
-        <a href="home.php" class="logo">
-            <img
-                src="../assets/images/GNC_Logo.svg.png"
-                alt="GNC Logo"
-            >
-        </a>
-
-        <div class="nav-actions">
-            <span>
-                <?= escapeHome((string) $name) ?>
-                · <?= escapeHome($role) ?>
-            </span>
-
-            <a href="logout.php" class="btn">
-                Cerrar sesión
-            </a>
-        </div>
-    </div>
+    <?php
+    $currentPage = 'home';
+    $basePath = '';
+    include __DIR__ . '/partials/navbar.php';
+    ?>
 
     <main class="container">
         <h1 class="title">GNC System</h1>
@@ -71,11 +47,9 @@ function escapeHome(string $value): string
         </p>
 
         <div class="cards">
-
             <?php if ($isAdmin || $isEmployee): ?>
                 <a href="products/products.php" class="card">
                     <h2>Productos</h2>
-
                     <p>
                         <?php if ($isAdmin): ?>
                             Gestiona productos e inventario.
@@ -90,7 +64,6 @@ function escapeHome(string $value): string
                 <h2>
                     <?= $isCustomer ? 'Comprar productos' : 'Ventas' ?>
                 </h2>
-
                 <p>
                     <?php if ($isCustomer): ?>
                         Consulta productos y precios, añade productos
@@ -101,11 +74,10 @@ function escapeHome(string $value): string
                 </p>
             </a>
 
-            <a href="<?= escapeHome($historyUrl) ?>" class="card">
+            <a href="<?= $historyUrl ?>" class="card">
                 <h2>
                     <?= $isCustomer ? 'Mis compras' : 'Historial de ventas' ?>
                 </h2>
-
                 <p>
                     <?php if ($isCustomer): ?>
                         Consulta tus compras y el detalle de sus productos.
@@ -118,7 +90,6 @@ function escapeHome(string $value): string
             <?php if ($isAdmin || $isEmployee): ?>
                 <a href="suppliers/suppliers.php" class="card">
                     <h2>Proveedores</h2>
-
                     <p>
                         <?php if ($isAdmin): ?>
                             Gestiona los proveedores del sistema.
@@ -130,7 +101,6 @@ function escapeHome(string $value): string
 
                 <a href="purchases/purchases.php" class="card">
                     <h2>Pedidos a proveedores</h2>
-
                     <p>
                         Registra pedidos y actualiza
                         su estado de recepción.
@@ -144,16 +114,12 @@ function escapeHome(string $value): string
                     class="card"
                 >
                     <h2>Métodos de pago</h2>
-                    <p>
-                        Administra los métodos de pago disponibles.
-                    </p>
+                    <p>Administra los métodos de pago disponibles.</p>
                 </a>
 
                 <a href="audits/audits.php" class="card">
                     <h2>Auditorías</h2>
-                    <p>
-                        Consulta las acciones registradas en el sistema.
-                    </p>
+                    <p>Consulta las acciones registradas en el sistema.</p>
                 </a>
 
                 <a href="users/users.php" class="card">
@@ -164,9 +130,7 @@ function escapeHome(string $value): string
                     </p>
                 </a>
             <?php endif; ?>
-
         </div>
     </main>
 </body>
-
 </html>

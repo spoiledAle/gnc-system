@@ -40,100 +40,15 @@ unset($_SESSION['registeredUsername']);
 ?>
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GNC Login</title>
-
     <link rel="stylesheet" href="../assets/css/style.css">
-
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: var(--gnc-bg-main);
-            padding: 24px;
-            margin: 0;
-            box-sizing: border-box;
-        }
-
-        .login-box {
-            width: 100%;
-            max-width: 420px;
-            background-color: var(--gnc-bg-card);
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--gnc-border);
-            text-align: center;
-            box-sizing: border-box;
-        }
-
-        .login-box img {
-            width: 180px;
-            max-width: 100%;
-            margin-bottom: 25px;
-        }
-
-        .login-box h1 {
-            border-left: none;
-            padding-left: 0;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--gnc-text-secondary);
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .input-group input {
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .login-btn {
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .register-link {
-            margin-top: 20px;
-        }
-
-        .message {
-            margin-bottom: 20px;
-            overflow-wrap: anywhere;
-        }
-
-        .success-message {
-            color: #00ff88;
-        }
-
-        .error-message {
-            color: #ff8585;
-        }
-
-        .warning-message {
-            color: orange;
-        }
-    </style>
 </head>
 
-<body>
-    <div class="login-box">
+<body class="auth-body">
+    <main class="login-box">
         <img
             src="../assets/images/GNC_Logo.svg.png"
             alt="GNC Logo"
@@ -142,7 +57,7 @@ unset($_SESSION['registeredUsername']);
         <h1>Iniciar sesión</h1>
 
         <?php if (is_string($registeredUsername)): ?>
-            <p class="message success-message" role="status">
+            <div class="alert alert-success" role="status">
                 Cuenta creada. Inicia sesión con:
                 <strong>
                     <?= htmlspecialchars(
@@ -151,24 +66,24 @@ unset($_SESSION['registeredUsername']);
                         'UTF-8'
                     ) ?>
                 </strong>
-            </p>
+            </div>
         <?php endif; ?>
 
         <?php if ($error === '1'): ?>
-            <p class="message error-message" role="alert">
+            <div class="alert alert-error" role="alert">
                 Usuario o contraseña incorrectos,
                 o cuenta sin acceso.
-            </p>
+            </div>
         <?php elseif ($error === '2'): ?>
-            <p class="message warning-message" role="alert">
+            <div class="alert alert-warning" role="alert">
                 Completa correctamente todos los campos.
-            </p>
+            </div>
         <?php endif; ?>
 
         <?php if (isset($_GET['expired'])): ?>
-            <p class="message warning-message" role="status">
+            <div class="alert alert-warning" role="status">
                 Tu sesión expiró. Inicia sesión nuevamente.
-            </p>
+            </div>
         <?php endif; ?>
 
         <form
@@ -187,7 +102,6 @@ unset($_SESSION['registeredUsername']);
 
             <div class="input-group">
                 <label for="username">Usuario</label>
-
                 <input
                     type="text"
                     id="username"
@@ -200,7 +114,6 @@ unset($_SESSION['registeredUsername']);
 
             <div class="input-group">
                 <label for="password">Contraseña</label>
-
                 <input
                     type="password"
                     id="password"
@@ -221,7 +134,6 @@ unset($_SESSION['registeredUsername']);
         <div class="register-link">
             <a href="register.php">Crear cuenta</a>
         </div>
-    </div>
+    </main>
 </body>
-
 </html>

@@ -26,45 +26,18 @@ $categories = $productModel->getCategories();
 
 <head>
 
-
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>
-
-    Modificar Producto
-
-</title>
+<title>Modificar Producto</title>
 
 <link rel="stylesheet" href="../../assets/css/style.css">
-
 
 </head>
 
 <body>
 
-
-<div class="navbar">
-
-    <a href="../home.php" class="logo">
-
-        <img
-            src="../../assets/images/GNC_Logo.svg.png"
-            alt="GNC Logo"
-        >
-
-    </a>
-
-    <div class="nav-actions">
-
-        <a href="../logout.php" class="btn">
-
-            Cerrar Sesión
-
-        </a>
-
-    </div>
-
-</div>
+<?php $currentPage = 'products'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
 <div class="container">
 
@@ -80,17 +53,17 @@ $categories = $productModel->getCategories();
 
     </p>
 
-    <div style="margin-bottom: 25px;">
+    <div class="page-actions">
 
-        <a href="products.php" class="btn">
+        <a href="products.php" class="btn btn-secondary">
 
-            Volver al Inventario
+            ← Volver al Inventario
 
         </a>
 
     </div>
 
-    <div style="max-width: 600px;">
+    <div class="form-container">
 
         <form
             action="../../controllers/ProductController.php"
@@ -104,26 +77,11 @@ $categories = $productModel->getCategories();
                 value="<?php echo $product['id']; ?>"
             >
 
-            <div style="margin-bottom: 20px;">
+            <div class="form-group">
 
-                <label>
+                <label>Categoría:</label>
 
-                    Categoría:
-
-                </label>
-
-                <select
-                    name="category_id"
-                    required
-                    style="
-                        width: 100%;
-                        padding: 12px;
-                        border-radius: 8px;
-                        background: var(--gnc-bg-card);
-                        color: white;
-                        border: 1.5px solid var(--gnc-border);
-                    "
-                >
+                <select name="category_id" required>
 
                     <?php while($category = $categories->fetch(PDO::FETCH_ASSOC)) { ?>
 
@@ -146,13 +104,9 @@ $categories = $productModel->getCategories();
 
             </div>
 
-            <div style="margin-bottom: 20px;">
+            <div class="form-group">
 
-                <label>
-
-                    Nombre del Producto:
-
-                </label>
+                <label>Nombre del Producto:</label>
 
                 <input
                     type="text"
@@ -163,46 +117,19 @@ $categories = $productModel->getCategories();
 
             </div>
 
-            <div style="margin-bottom: 20px;">
+            <div class="form-group">
 
-                <label>
+                <label>Descripción:</label>
 
-                    Descripción:
-
-                </label>
-
-                <textarea
-                    name="description"
-                    style="
-                        width: 100%;
-                        min-height: 100px;
-                        padding: 12px;
-                        border-radius: 8px;
-                        background: var(--gnc-bg-card);
-                        color: white;
-                        border: 1.5px solid var(--gnc-border);
-                        outline: none;
-                    "
-                ><?php echo $product['description']; ?></textarea>
+                <textarea name="description"><?php echo $product['description']; ?></textarea>
 
             </div>
 
-            <div
-                style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 20px;
-                    margin-bottom: 20px;
-                "
-            >
+            <div class="form-row">
 
-                <div>
+                <div class="form-group">
 
-                    <label>
-
-                        Precio (₡):
-
-                    </label>
+                    <label>Precio (₡):</label>
 
                     <input
                         type="number"
@@ -213,13 +140,9 @@ $categories = $productModel->getCategories();
 
                 </div>
 
-                <div>
+                <div class="form-group">
 
-                    <label>
-
-                        Stock:
-
-                    </label>
+                    <label>Stock:</label>
 
                     <input
                         type="number"
@@ -232,42 +155,23 @@ $categories = $productModel->getCategories();
 
             </div>
 
-            <div style="margin-bottom: 30px;">
+            <div class="form-group">
 
-                <label>
+                <label>Nueva Imagen (Opcional):</label>
 
-                    Nueva Imagen (Opcional):
-
-                </label>
-
-                <div
-                    style="
-                        display: flex;
-                        align-items: center;
-                        gap: 15px;
-                        margin-top: 10px;
-                    "
-                >
+                <div class="form-image-row">
 
                     <?php if($product['image']) { ?>
 
                         <img
                             src="../../assets/images/<?php echo $product['image']; ?>"
-                            style="
-                                width: 50px;
-                                height: 50px;
-                                border-radius: 5px;
-                                object-fit: cover;
-                            "
+                            class="form-image-preview"
+                            alt="Imagen actual"
                         >
 
                     <?php } ?>
 
-                    <input
-                        type="file"
-                        name="image"
-                        style="padding: 10px 0;"
-                    >
+                    <input type="file" name="image">
 
                 </div>
 
@@ -276,8 +180,7 @@ $categories = $productModel->getCategories();
             <button
                 type="submit"
                 name="update"
-                class="btn add-btn"
-                style="width: 100%;"
+                class="btn add-btn btn-block"
             >
 
                 Actualizar Producto
