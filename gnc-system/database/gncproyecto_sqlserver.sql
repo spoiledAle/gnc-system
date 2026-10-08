@@ -1,5 +1,3 @@
--- BASE DE DATOS: gncproyecto
-
 IF DB_ID('gncproyecto') IS NULL
 BEGIN
     CREATE DATABASE gncproyecto;
@@ -18,7 +16,6 @@ CREATE TABLE dbo.tbl_auditLogs (
     id            INT IDENTITY(1,1) NOT NULL,
     action_type   VARCHAR(50)  NULL,
     product_name  VARCHAR(100) NULL,
-    user_id       INT          NULL,
     action_date   DATETIME     NULL DEFAULT GETDATE(),
     CONSTRAINT PK_audit_logs PRIMARY KEY (id)
 );
@@ -69,11 +66,6 @@ CREATE TABLE dbo.tbl_users (
     CONSTRAINT PK_users PRIMARY KEY (id),
     CONSTRAINT UQ_users_email UNIQUE (email)
 );
-GO
-
--- El usuario que realizó cada acción registrada en la auditoría.
-ALTER TABLE dbo.tbl_auditLogs
-    ADD CONSTRAINT fk_auditLogs_user FOREIGN KEY (user_id) REFERENCES dbo.tbl_users (id);
 GO
 
 -- Tabla: tbl_products
@@ -184,7 +176,7 @@ GO
 -- users
 SET IDENTITY_INSERT dbo.tbl_users ON;
 INSERT INTO dbo.tbl_users (id, name, email, password) VALUES
-    (1, N'2AC Team', N'2acteam@gmail.com', N'$2y$10$UispaEgFucSHtW6Ug9R/vuykxBmKORoLIPfRGbLpouQcDSRJRQ1ou'); -- password real: 2ac
+    (1, N'2AC Team', N'2acteam@gmail.com', N'2ac');
 SET IDENTITY_INSERT dbo.tbl_users OFF;
 GO
 
@@ -768,8 +760,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name, user_id)
-    SELECT 'INSERT', name, TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT)
+    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
+    SELECT 'INSERT', name
     FROM inserted;
 END
 GO
@@ -783,8 +775,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name, user_id)
-    SELECT 'UPDATE', name, TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT)
+    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
+    SELECT 'UPDATE', name
     FROM inserted;
 END
 GO
@@ -798,8 +790,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name, user_id)
-    SELECT 'DELETE', name, TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT)
+    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
+    SELECT 'DELETE', name
     FROM deleted;
 END
 GO
@@ -1245,7 +1237,9 @@ BEGIN
 END
 GO
 
-/*================ FUNCIONES ================*/
+
+GO
+
 
 /* ============================================================
    FUNCIÓN ESCALAR 1: fn_valorInventarioProducto
@@ -1262,9 +1256,9 @@ GO
 
 CREATE OR ALTER FUNCTION dbo.fn_valorInventarioProducto
 (
-    @productId INT 
+    @productId INT
 )
-RETURNS DECIMAL(18,2) 
+RETURNS DECIMAL(18,2)
 AS
 BEGIN
     DECLARE @valor DECIMAL(18,2);
@@ -1294,9 +1288,9 @@ GO
 CREATE OR ALTER FUNCTION dbo.fn_unidadesVendidasProducto
 
 (
-    @productId INT 
+    @productId INT
 )
-RETURNS INT 
+RETURNS INT
 AS
 BEGIN
     DECLARE @cantidad INT;
@@ -1327,33 +1321,33 @@ GO
 CREATE OR ALTER FUNCTION dbo.fn_productosBajoLimite
 
 (
-    @limite INT 
+    @limite INT
 )
 RETURNS @resultado TABLE
 (
-    productId INT,          
-    producto VARCHAR(100),  
-    categoria VARCHAR(100), 
-    stock INT,            
-    faltantes INT          
+    productId INT,
+    producto VARCHAR(100),
+    categoria VARCHAR(100),
+    stock INT,
+    faltantes INT
 )
 AS
 BEGIN
     INSERT INTO @resultado
         (productId, producto, categoria, stock, faltantes)
     SELECT
-        p.id,                 
-        p.name,                 
-        c.name,                 
-        p.stock,               
-        @limite - p.stock     
+        p.id,
+        p.name,
+        c.name,
+        p.stock,
+        @limite - p.stock
     FROM dbo.tbl_products AS p
     INNER JOIN dbo.tbl_categories AS c
         ON c.id = p.category_id
     WHERE p.stock < @limite;
 
     RETURN;
-    
+
 END;
 GO
 
@@ -1374,16 +1368,16 @@ GO
 
 CREATE OR ALTER FUNCTION dbo.fn_resumenVentasPeriodo
 (
-    @fechaInicio DATE, 
-    @fechaFin DATE     
+    @fechaInicio DATE,
+    @fechaFin DATE
 )
 RETURNS @resultado TABLE
 
 (
-    productId INT,                  
-    producto VARCHAR(100),           
-    unidadesVendidas INT,            
-    montoVendido DECIMAL(18,2)       
+    productId INT,
+    producto VARCHAR(100),
+    unidadesVendidas INT,
+    montoVendido DECIMAL(18,2)
 )
 AS
 BEGIN
@@ -1391,9 +1385,9 @@ BEGIN
         (productId, producto, unidadesVendidas, montoVendido)
 
     SELECT
-        p.id,                              
-        p.name,                         
-        SUM(sd.quantity),                  
+        p.id,
+        p.name,
+        SUM(sd.quantity),
         SUM(CAST(sd.subtotal AS DECIMAL(18,2)))
     FROM dbo.tbl_saleDetails AS sd
     INNER JOIN dbo.tbl_sales AS s
@@ -1424,18 +1418,18 @@ GO
 
 CREATE OR ALTER FUNCTION dbo.fn_productosPorCategoria
 (
-    @categoryId INT 
+    @categoryId INT
 )
 RETURNS TABLE
 AS
 RETURN
 (
     SELECT
-        p.id AS productId,     
-        p.name AS producto,    
-        c.name AS categoria,   
-        p.price AS precio,     
-        p.stock                
+        p.id AS productId,
+        p.name AS producto,
+        c.name AS categoria,
+        p.price AS precio,
+        p.stock
     FROM dbo.tbl_products AS p
     INNER JOIN dbo.tbl_categories AS c
         ON c.id = p.category_id
@@ -1460,19 +1454,19 @@ GO
 
 CREATE OR ALTER FUNCTION dbo.fn_detalleVenta
 (
-    @saleId INT 
+    @saleId INT
 )
 RETURNS TABLE
 AS
 RETURN
 (
     SELECT
-        s.id AS saleId,                 
-        s.sale_date AS fechaVenta,      
-        p.name AS producto,           
-        sd.quantity AS cantidad,        
-        sd.subtotal,                    
-        pm.name AS metodoPago         
+        s.id AS saleId,
+        s.sale_date AS fechaVenta,
+        p.name AS producto,
+        sd.quantity AS cantidad,
+        sd.subtotal,
+        pm.name AS metodoPago
     FROM dbo.tbl_sales AS s
     INNER JOIN dbo.tbl_saleDetails AS sd
         ON sd.sale_id = s.id
@@ -1496,3 +1490,794 @@ SELECT * FROM dbo.fn_resumenVentasPeriodo('2026-06-01', '2026-06-30');
 --En linea consultas
 SELECT * FROM dbo.fn_productosPorCategoria(1);
 SELECT * FROM dbo.fn_detalleVenta(5);
+GO
+
+/* ============================================================
+   CUENTAS SQL, USUARIOS, ROLES Y PERMISOS DE LA APLICACIÓN
+   ============================================================ */
+USE master;
+GO
+-- Si la política de Windows rechaza esta clave de demostración,
+-- reemplázala por una contraseña que cumpla dicha política.
+IF SUSER_ID(N'gnc_admin') IS NULL
+BEGIN
+    CREATE LOGIN gnc_admin
+    WITH PASSWORD = 'admin123', CHECK_POLICY = ON,
+         DEFAULT_DATABASE = gncproyecto;
+END;
+GO
+-- Si la política de Windows rechaza esta clave de demostración,
+-- reemplázala por una contraseña que cumpla dicha política.
+IF SUSER_ID(N'gnc_empleado') IS NULL
+BEGIN
+    CREATE LOGIN gnc_empleado
+    WITH PASSWORD = 'empleado123', CHECK_POLICY = ON,
+         DEFAULT_DATABASE = gncproyecto;
+END;
+GO
+-- Si la política de Windows rechaza esta clave de demostración,
+-- reemplázala por una contraseña que cumpla dicha política.
+IF SUSER_ID(N'gnc_cliente') IS NULL
+BEGIN
+    CREATE LOGIN gnc_cliente
+    WITH PASSWORD = 'cliente123', CHECK_POLICY = ON,
+         DEFAULT_DATABASE = gncproyecto;
+END;
+GO
+USE gncproyecto;
+GO
+IF USER_ID(N'gnc_admin') IS NULL
+    CREATE USER gnc_admin FOR LOGIN gnc_admin;
+GO
+IF USER_ID(N'gnc_empleado') IS NULL
+    CREATE USER gnc_empleado FOR LOGIN gnc_empleado;
+GO
+IF USER_ID(N'gnc_cliente') IS NULL
+    CREATE USER gnc_cliente FOR LOGIN gnc_cliente;
+GO
+IF DATABASE_PRINCIPAL_ID(N'rolAdmin') IS NULL
+    CREATE ROLE rolAdmin AUTHORIZATION dbo;
+GO
+IF IS_ROLEMEMBER(N'rolAdmin', N'gnc_admin') <> 1
+    ALTER ROLE rolAdmin ADD MEMBER gnc_admin;
+GO
+GRANT CONNECT TO gnc_admin;
+GO
+IF DATABASE_PRINCIPAL_ID(N'rolEmpleado') IS NULL
+    CREATE ROLE rolEmpleado AUTHORIZATION dbo;
+GO
+IF IS_ROLEMEMBER(N'rolEmpleado', N'gnc_empleado') <> 1
+    ALTER ROLE rolEmpleado ADD MEMBER gnc_empleado;
+GO
+GRANT CONNECT TO gnc_empleado;
+GO
+IF DATABASE_PRINCIPAL_ID(N'rolCliente') IS NULL
+    CREATE ROLE rolCliente AUTHORIZATION dbo;
+GO
+IF IS_ROLEMEMBER(N'rolCliente', N'gnc_cliente') <> 1
+    ALTER ROLE rolCliente ADD MEMBER gnc_cliente;
+GO
+GRANT CONNECT TO gnc_cliente;
+GO
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO rolAdmin;
+GRANT EXECUTE ON SCHEMA::dbo TO rolAdmin;
+GO
+GRANT SELECT ON dbo.tbl_categories TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_products TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_paymentMethods TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_suppliers TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_sales TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_saleDetails TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_purchases TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_purchaseDetails TO rolEmpleado;
+GRANT SELECT ON dbo.tbl_users (id, name) TO rolEmpleado;
+GO
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_products TO rolEmpleado;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_categories TO rolEmpleado;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_suppliers TO rolEmpleado;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_paymentMethods TO rolEmpleado;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_users TO rolEmpleado;
+DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_auditLogs TO rolEmpleado;
+GO
+GRANT SELECT ON dbo.tbl_categories TO rolCliente;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_categories TO rolCliente;
+GRANT SELECT ON dbo.tbl_products TO rolCliente;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_products TO rolCliente;
+GRANT SELECT ON dbo.tbl_paymentMethods TO rolCliente;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_paymentMethods TO rolCliente;
+DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_suppliers TO rolCliente;
+DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_purchases TO rolCliente;
+DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_purchaseDetails TO rolCliente;
+DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_auditLogs TO rolCliente;
+GO
+/* Perfil vinculado al login SQL: necesario ANTES de las vistas nuevas. */
+IF COL_LENGTH('dbo.tbl_users', 'sqlLogin') IS NULL
+BEGIN
+    ALTER TABLE dbo.tbl_users ADD sqlLogin NVARCHAR(128) NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'UX_tbl_users_sqlLogin'
+      AND object_id = OBJECT_ID(N'dbo.tbl_users')
+)
+BEGIN
+    CREATE UNIQUE INDEX UX_tbl_users_sqlLogin
+    ON dbo.tbl_users(sqlLogin) WHERE sqlLogin IS NOT NULL;
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.tbl_users WHERE sqlLogin = N'gnc_admin')
+BEGIN
+    INSERT INTO dbo.tbl_users (name, email, password, sqlLogin)
+    VALUES ('Administrador', 'admin@gnc.com', 'admin123', N'gnc_admin');
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.tbl_users WHERE sqlLogin = N'gnc_empleado')
+BEGIN
+    INSERT INTO dbo.tbl_users (name, email, password, sqlLogin)
+    VALUES ('Empleado', 'empleado@gnc.com', 'empleado123', N'gnc_empleado');
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.tbl_users WHERE sqlLogin = N'gnc_cliente')
+BEGIN
+    INSERT INTO dbo.tbl_users (name, email, password, sqlLogin)
+    VALUES ('Cliente', 'cliente@gnc.com', 'cliente123', N'gnc_cliente');
+END;
+GO
+CREATE OR ALTER VIEW dbo.vw_appIdentity
+AS
+SELECT id, name, email, sqlLogin
+FROM dbo.tbl_users
+WHERE sqlLogin = ORIGINAL_LOGIN();
+GO
+GRANT SELECT ON dbo.vw_appIdentity TO rolAdmin;
+GRANT SELECT ON dbo.vw_appIdentity TO rolEmpleado;
+GRANT SELECT ON dbo.vw_appIdentity TO rolCliente;
+GO
+
+/* ============================================================
+   COMPLEMENTO: USUARIOS, REGISTRO Y COMPRAS DE CLIENTES
+
+   ============================================================ */
+
+USE gncproyecto;
+GO
+
+/* ============================================================
+   VISTAS: CADA CLIENTE CONSULTA SUS PROPIAS COMPRAS
+   ============================================================ */
+
+CREATE OR ALTER VIEW dbo.v_misCompras
+AS
+SELECT
+    s.id,
+    s.sale_date,
+    s.total,
+    pm.name AS payment_method
+FROM dbo.tbl_sales AS s
+INNER JOIN dbo.tbl_users AS u
+    ON u.id = s.user_id
+INNER JOIN dbo.tbl_paymentMethods AS pm
+    ON pm.id = s.payment_method_id
+WHERE u.sqlLogin = ORIGINAL_LOGIN();
+GO
+
+CREATE OR ALTER VIEW dbo.v_misCompraDetalles
+AS
+SELECT
+    s.id AS sale_id,
+    p.name AS product_name,
+    d.quantity,
+    d.subtotal
+FROM dbo.tbl_sales AS s
+INNER JOIN dbo.tbl_users AS u
+    ON u.id = s.user_id
+INNER JOIN dbo.tbl_saleDetails AS d
+    ON d.sale_id = s.id
+INNER JOIN dbo.tbl_products AS p
+    ON p.id = d.product_id
+WHERE u.sqlLogin = ORIGINAL_LOGIN();
+GO
+
+GRANT SELECT ON dbo.v_misCompras TO rolCliente;
+GRANT SELECT ON dbo.v_misCompraDetalles TO rolCliente;
+
+GRANT SELECT ON dbo.v_historialVentas TO rolEmpleado;
+GRANT SELECT ON dbo.v_historialCompras TO rolEmpleado;
+GO
+
+/* ============================================================
+   REGISTRAR VENTA / COMPRA
+   ============================================================ */
+
+CREATE OR ALTER PROCEDURE dbo.pa_finalizarVenta
+    @items NVARCHAR(MAX),
+    @paymentMethodId INT,
+    @token UNIQUEIDENTIFIER
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND COALESCE(IS_ROLEMEMBER('rolEmpleado'), 0) <> 1
+       AND COALESCE(IS_ROLEMEMBER('rolCliente'), 0) <> 1
+        THROW 51100, 'Acceso denegado.', 1;
+
+    DECLARE @userId INT = (
+        SELECT id
+        FROM dbo.tbl_users
+        WHERE sqlLogin = ORIGINAL_LOGIN()
+    );
+
+    IF @userId IS NULL OR @token IS NULL
+        THROW 51101, 'Cuenta o solicitud inválida.', 1;
+
+    IF ISJSON(@items) <> 1
+       OR LEFT(LTRIM(@items), 1) <> '['
+        THROW 51102, 'Carrito inválido.', 1;
+
+    IF (SELECT COUNT(*) FROM OPENJSON(@items))
+       NOT BETWEEN 1 AND 100
+        THROW 51102, 'Carrito inválido.', 1;
+
+    IF EXISTS (
+        SELECT 1
+        FROM OPENJSON(@items)
+        WITH (
+            product_id INT,
+            quantity INT
+        )
+        WHERE product_id IS NULL
+           OR quantity IS NULL
+           OR quantity NOT BETWEEN 1 AND 100000
+    )
+        THROW 51102, 'Producto o cantidad inválida.', 1;
+
+    IF EXISTS (
+        SELECT product_id
+        FROM OPENJSON(@items)
+        WITH (
+            product_id INT,
+            quantity INT
+        )
+        GROUP BY product_id
+        HAVING COUNT(*) > 1
+    )
+        THROW 51102, 'Productos repetidos en el carrito.', 1;
+
+    DECLARE @cart TABLE (
+        product_id INT PRIMARY KEY,
+        quantity INT,
+        price DECIMAL(10,2)
+    );
+
+    INSERT INTO @cart (product_id, quantity)
+    SELECT product_id, quantity
+    FROM OPENJSON(@items)
+    WITH (
+        product_id INT,
+        quantity INT
+    );
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DECLARE @lockResult INT;
+        DECLARE @resource NVARCHAR(255) =
+            N'gnc_checkout_' + CONVERT(NVARCHAR(36), @token);
+
+        EXEC @lockResult = sys.sp_getapplock
+            @Resource = @resource,
+            @LockMode = 'Exclusive',
+            @LockOwner = 'Transaction',
+            @LockTimeout = 10000;
+
+        IF @lockResult < 0
+            THROW 51103, 'Solicitud ocupada. Inténtalo nuevamente.', 1;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.tbl_paymentMethods
+            WHERE id = @paymentMethodId
+        )
+            THROW 51104, 'Método de pago inválido.', 1;
+
+        UPDATE c
+        SET c.price = p.price
+        FROM @cart AS c
+        INNER JOIN dbo.tbl_products AS p WITH (UPDLOCK, HOLDLOCK)
+            ON p.id = c.product_id;
+
+        IF EXISTS (
+            SELECT 1 FROM @cart WHERE price IS NULL
+        )
+            THROW 51105, 'Un producto ya no está disponible.', 1;
+
+        IF EXISTS (
+            SELECT 1
+            FROM @cart AS c
+            INNER JOIN dbo.tbl_products AS p
+                ON p.id = c.product_id
+            WHERE p.stock < c.quantity
+        )
+            THROW 51106, 'Stock insuficiente.', 1;
+
+        DECLARE @total DECIMAL(18,2) = (
+            SELECT SUM(CONVERT(DECIMAL(18,2), price) * quantity)
+            FROM @cart
+        );
+
+        IF @total > 99999999.99
+            THROW 51107, 'El total supera el límite permitido.', 1;
+
+        INSERT INTO dbo.tbl_sales (
+            user_id,
+            payment_method_id,
+            total,
+            sale_date
+        )
+        VALUES (
+            @userId,
+            @paymentMethodId,
+            @total,
+            GETDATE()
+        );
+
+        DECLARE @saleId INT = CONVERT(INT, SCOPE_IDENTITY());
+
+        INSERT INTO dbo.tbl_saleDetails (
+            sale_id,
+            product_id,
+            quantity,
+            subtotal
+        )
+        SELECT
+            @saleId,
+            product_id,
+            quantity,
+            price * quantity
+        FROM @cart;
+
+        COMMIT TRANSACTION;
+
+        SELECT @saleId AS sale_id;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+GRANT EXECUTE ON dbo.pa_finalizarVenta
+TO rolAdmin, rolEmpleado, rolCliente;
+GO
+
+/* ============================================================
+   CERTIFICADO PARA LOS PROCEDIMIENTOS DE CUENTAS
+
+   ============================================================ */
+
+IF CERT_ID('certGncAccounts') IS NULL
+BEGIN
+    CREATE CERTIFICATE certGncAccounts
+    ENCRYPTION BY PASSWORD = 'tammy'
+    WITH SUBJECT = 'Procedimientos de cuentas GNC';
+END;
+GO
+
+IF USER_ID('userGncAccountsCertificate') IS NULL
+    CREATE USER userGncAccountsCertificate
+    FROM CERTIFICATE certGncAccounts;
+GO
+
+GRANT ALTER ANY USER TO userGncAccountsCertificate;
+GRANT VIEW DEFINITION TO userGncAccountsCertificate;
+
+GRANT ALTER ON ROLE::rolAdmin
+TO userGncAccountsCertificate;
+
+GRANT ALTER ON ROLE::rolEmpleado
+TO userGncAccountsCertificate;
+
+GRANT ALTER ON ROLE::rolCliente
+TO userGncAccountsCertificate;
+GO
+
+DECLARE @certificate VARBINARY(MAX) =
+    CERTENCODED(CERT_ID('certGncAccounts'));
+
+DECLARE @sql NVARCHAR(MAX) =
+    N'USE master;
+
+    IF CERT_ID(''certGncAccounts'') IS NULL
+        CREATE CERTIFICATE certGncAccounts
+        FROM BINARY='
+        + CONVERT(NVARCHAR(MAX), @certificate, 1) + N';
+
+    IF SUSER_ID(''loginGncAccountsCertificate'') IS NULL
+        CREATE LOGIN loginGncAccountsCertificate
+        FROM CERTIFICATE certGncAccounts;
+
+    GRANT ALTER ANY LOGIN TO loginGncAccountsCertificate;
+    GRANT VIEW ANY DEFINITION TO loginGncAccountsCertificate;';
+
+EXEC (@sql);
+GO
+
+/* ============================================================
+   VALIDAR SI EL LOGIN SIGUE ACTIVO
+   ============================================================ */
+
+CREATE OR ALTER PROCEDURE dbo.pa_validarCuenta
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        CONVERT(
+            INT,
+            CASE WHEN is_disabled = 0 THEN 1 ELSE 0 END
+        ) AS active
+    FROM sys.sql_logins
+    WHERE name = ORIGINAL_LOGIN();
+END;
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_validarCuenta
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+GRANT EXECUTE ON dbo.pa_validarCuenta
+TO rolAdmin, rolEmpleado, rolCliente;
+GO
+
+/* ============================================================
+   ADMIN: LISTAR USUARIOS
+   ============================================================ */
+
+CREATE OR ALTER PROCEDURE dbo.pa_listarUsuarios
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+        THROW 51200, 'Solo el administrador puede gestionar usuarios.', 1;
+
+    SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.sqlLogin,
+        CONVERT(
+            INT,
+            CASE WHEN l.is_disabled = 0 THEN 1 ELSE 0 END
+        ) AS active,
+        CASE
+            WHEN IS_ROLEMEMBER('rolAdmin', u.sqlLogin) = 1
+                THEN 'ADMIN'
+            WHEN IS_ROLEMEMBER('rolEmpleado', u.sqlLogin) = 1
+                THEN 'EMPLEADO'
+            WHEN IS_ROLEMEMBER('rolCliente', u.sqlLogin) = 1
+                THEN 'CLIENTE'
+            ELSE 'SIN ROL'
+        END AS role
+    FROM dbo.tbl_users AS u
+    INNER JOIN sys.sql_logins AS l
+        ON l.name = u.sqlLogin
+    ORDER BY u.name, u.id;
+END;
+GO
+
+/* ============================================================
+   ADMIN: CAMBIAR ROL Y ACTIVAR / DESACTIVAR
+   ============================================================ */
+
+CREATE OR ALTER PROCEDURE dbo.pa_administrarUsuario
+    @id INT,
+    @role VARCHAR(10),
+    @active BIT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+        THROW 51200, 'Solo el administrador puede gestionar usuarios.', 1;
+
+    IF @role IS NULL
+       OR @role NOT IN ('ADMIN', 'EMPLEADO', 'CLIENTE')
+       OR @active IS NULL
+        THROW 51201, 'Rol o estado inválido.', 1;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DECLARE @result INT;
+
+        EXEC @result = sys.sp_getapplock
+            @Resource = 'gnc_manage_accounts',
+            @LockMode = 'Exclusive',
+            @LockOwner = 'Transaction',
+            @LockTimeout = 10000;
+
+        IF @result < 0
+            THROW 51202, 'Otro administrador está actualizando cuentas.', 1;
+
+        DECLARE @login SYSNAME = (
+            SELECT sqlLogin FROM dbo.tbl_users WHERE id = @id
+        );
+
+        IF @login IS NULL
+           OR NOT EXISTS (
+               SELECT 1 FROM sys.sql_logins WHERE name = @login
+           )
+            THROW 51203, 'Cuenta no encontrada.', 1;
+
+        IF @login NOT IN (
+            'gnc_admin', 'gnc_empleado', 'gnc_cliente'
+        )
+           AND LEFT(@login, 8) <> 'cliente_'
+            THROW 51204, 'Esta cuenta no se administra desde la aplicación.', 1;
+
+        IF IS_SRVROLEMEMBER('sysadmin', @login) = 1
+           OR IS_SRVROLEMEMBER('securityadmin', @login) = 1
+            THROW 51204, 'Cuenta con privilegios especiales.', 1;
+
+        IF (@role <> 'ADMIN' OR @active = 0)
+           AND IS_ROLEMEMBER('rolAdmin', @login) = 1
+           AND EXISTS (
+               SELECT 1
+               FROM sys.sql_logins
+               WHERE name = @login AND is_disabled = 0
+           )
+           AND (
+               SELECT COUNT(*)
+               FROM sys.database_role_members AS m
+               INNER JOIN sys.database_principals AS r
+                   ON r.principal_id = m.role_principal_id
+               INNER JOIN sys.database_principals AS u
+                   ON u.principal_id = m.member_principal_id
+               INNER JOIN sys.sql_logins AS l
+                   ON l.sid = u.sid
+               WHERE r.name = 'rolAdmin'
+                 AND l.is_disabled = 0
+           ) <= 1
+            THROW 51205, 'Debe quedar al menos un administrador activo.', 1;
+
+        DECLARE @commands NVARCHAR(MAX) = N'';
+
+        IF IS_ROLEMEMBER('rolAdmin', @login) = 1
+            SET @commands +=
+                N'ALTER ROLE rolAdmin DROP MEMBER '
+                + QUOTENAME(@login) + N';';
+
+        IF IS_ROLEMEMBER('rolEmpleado', @login) = 1
+            SET @commands +=
+                N'ALTER ROLE rolEmpleado DROP MEMBER '
+                + QUOTENAME(@login) + N';';
+
+        IF IS_ROLEMEMBER('rolCliente', @login) = 1
+            SET @commands +=
+                N'ALTER ROLE rolCliente DROP MEMBER '
+                + QUOTENAME(@login) + N';';
+
+        DECLARE @databaseRole SYSNAME =
+            CASE @role
+                WHEN 'ADMIN' THEN 'rolAdmin'
+                WHEN 'EMPLEADO' THEN 'rolEmpleado'
+                ELSE 'rolCliente'
+            END;
+
+        SET @commands +=
+            N'ALTER ROLE ' + QUOTENAME(@databaseRole)
+            + N' ADD MEMBER ' + QUOTENAME(@login) + N';';
+
+        SET @commands +=
+            N'ALTER LOGIN ' + QUOTENAME(@login)
+            + CASE
+                WHEN @active = 1 THEN N' ENABLE;'
+                ELSE N' DISABLE;'
+              END;
+
+        EXEC (@commands);
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_listarUsuarios
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_administrarUsuario
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+GRANT EXECUTE ON dbo.pa_listarUsuarios TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_administrarUsuario TO rolAdmin;
+GO
+
+/* ============================================================
+   REGISTRO: CUENTA TÉCNICA
+
+   Solo se utiliza desde PHP para ejecutar el registro.
+   No se utiliza para entrar al sistema.
+   ============================================================ */
+
+USE master;
+GO
+
+IF SUSER_ID(N'gnc_registro') IS NULL
+BEGIN
+    CREATE LOGIN gnc_registro
+    WITH PASSWORD = 'RegistroGnc2026!Local',
+         CHECK_POLICY = ON,
+         DEFAULT_DATABASE = gncproyecto;
+END
+ELSE
+BEGIN
+    ALTER LOGIN gnc_registro
+    WITH PASSWORD = 'RegistroGnc2026!Local';
+    ALTER LOGIN gnc_registro ENABLE;
+END;
+GO
+USE gncproyecto;
+GO
+IF USER_ID(N'gnc_registro') IS NULL
+BEGIN
+    CREATE USER gnc_registro FOR LOGIN gnc_registro;
+END
+ELSE
+BEGIN
+    ALTER USER gnc_registro WITH LOGIN = gnc_registro;
+END;
+GO
+GRANT CONNECT TO gnc_registro;
+GO
+
+/* ============================================================
+   REGISTRAR CUENTA SIEMPRE COMO CLIENTE
+   ============================================================ */
+
+CREATE OR ALTER PROCEDURE dbo.pa_registrarCliente
+    @username NVARCHAR(64),
+    @name NVARCHAR(200),
+    @email NVARCHAR(200),
+    @password NVARCHAR(256)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF ORIGINAL_LOGIN() <> 'gnc_registro'
+        THROW 51300, 'Registro no autorizado.', 1;
+
+    SET @username = LOWER(LTRIM(RTRIM(@username)));
+    SET @email = LOWER(LTRIM(RTRIM(@email)));
+    SET @name = LTRIM(RTRIM(@name));
+
+    IF @username IS NULL
+       OR LEN(@username) NOT BETWEEN 4 AND 30
+       OR @username COLLATE Latin1_General_100_BIN2
+          LIKE '%[^a-z0-9_]%'
+       OR LEFT(@username, 1) COLLATE Latin1_General_100_BIN2
+          NOT LIKE '[a-z]'
+       OR @name IS NULL
+       OR LEN(@name) NOT BETWEEN 1 AND 100
+       OR @email IS NULL
+       OR LEN(@email) NOT BETWEEN 3 AND 100
+       OR @email NOT LIKE '%_@_%._%'
+        THROW 51301, 'Datos de registro inválidos.', 1;
+
+    IF @password IS NULL
+       OR DATALENGTH(@password) / 2 NOT BETWEEN 12 AND 128
+       OR @password COLLATE Latin1_General_100_BIN2
+          NOT LIKE '%[A-Z]%'
+       OR @password COLLATE Latin1_General_100_BIN2
+          NOT LIKE '%[a-z]%'
+       OR @password NOT LIKE '%[0-9]%'
+       OR @password COLLATE Latin1_General_100_BIN2
+          NOT LIKE '%[^a-zA-Z0-9]%'
+        THROW 51301, 'La contraseña no cumple los requisitos.', 1;
+
+    DECLARE @login SYSNAME = N'cliente_' + @username;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        IF EXISTS (
+            SELECT 1
+            FROM dbo.tbl_users WITH (UPDLOCK, HOLDLOCK)
+            WHERE email = @email OR sqlLogin = @login
+        )
+           OR SUSER_ID(@login) IS NOT NULL
+            THROW 51302, 'Usuario o correo ya registrado.', 1;
+
+        DECLARE @commands NVARCHAR(MAX) =
+            N'CREATE LOGIN ' + QUOTENAME(@login)
+            + N' WITH PASSWORD=N'''
+            + REPLACE(@password, '''', '''''')
+            + N''', CHECK_POLICY=ON, DEFAULT_DATABASE='
+            + QUOTENAME(DB_NAME()) + N';'
+            + N'CREATE USER ' + QUOTENAME(@login)
+            + N' FOR LOGIN ' + QUOTENAME(@login) + N';'
+            + N'ALTER ROLE rolCliente ADD MEMBER '
+            + QUOTENAME(@login) + N';';
+
+        EXEC (@commands);
+
+        INSERT INTO dbo.tbl_users (
+            name, email, password, sqlLogin
+        )
+        VALUES (
+            @name,
+            @email,
+            'AUTENTICACION_SQL_SERVER',
+            @login
+        );
+
+        COMMIT TRANSACTION;
+
+        SELECT @login AS sqlLogin;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_registrarCliente
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+GRANT EXECUTE ON dbo.pa_registrarCliente TO gnc_registro;
+GO
+
+/* Permisos para los pedidos operativos del empleado. */
+
+GRANT INSERT, UPDATE ON dbo.tbl_purchases TO rolEmpleado;
+GRANT INSERT, UPDATE ON dbo.tbl_purchaseDetails TO rolEmpleado;
+GO
+
+/* ============================================================
+   COMPROBACIONES FINALES
+   ============================================================ */
+USE gncproyecto;
+GO
+SELECT r.name AS rol, u.name AS usuario
+FROM sys.database_role_members AS m
+INNER JOIN sys.database_principals AS r
+    ON r.principal_id = m.role_principal_id
+INNER JOIN sys.database_principals AS u
+    ON u.principal_id = m.member_principal_id
+WHERE r.name IN ('rolAdmin', 'rolEmpleado', 'rolCliente');
+GO
+SELECT id, name, email, sqlLogin
+FROM dbo.tbl_users
+WHERE sqlLogin IS NOT NULL;
+GO
+SELECT name, is_disabled, is_policy_checked
+FROM sys.sql_logins
+WHERE name IN ('gnc_admin', 'gnc_empleado', 'gnc_cliente', 'gnc_registro');
+GO
+SELECT name, compatibility_level
+FROM sys.databases WHERE name = DB_NAME();
+GO

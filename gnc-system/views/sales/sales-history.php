@@ -1,122 +1,172 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/../../config/auth_check.php';
 
-$inactive = 300;
-
-if (isset($_SESSION['timeout'])) {
-
-    $sessionLife = time() - $_SESSION['timeout'];
-
-    if ($sessionLife > $inactive) {
-
-        session_unset();
-
-        session_destroy();
-
-        header("Location: ../login.php");
-
-        exit();
-    }
+if ($_SESSION['user']['role'] === 'CLIENTE') {
+    header('Location: my-purchases.php');
+    exit;
 }
 
-$_SESSION['timeout'] = time();
+requireRole(['ADMIN', 'EMPLEADO']);
 
-if (!isset($_SESSION['user'])) {
+require_once __DIR__ . '/../../config/forms.php';
+require_once __DIR__ . '/../../models/SaleModel.php';
 
-    header("Location: ../login.php");
+try {
+    $saleModel = new SaleModel();
+    $statement = $saleModel->getSales();
 
-    exit();
+    $sales = $statement->fetchAll(PDO::FETCH_ASSOC);
+    $statement->closeCursor();
+} catch (PDOException $exception) {
+    error_log(
+        'GNC: historial de ventas. Código: '
+        . ($exception->errorInfo[1] ?? 0)
+    );
+
+    http_response_code(503);
+    exit('No se pudo consultar el historial. Revisa la consola PHP.');
 }
-
-include_once '../../models/SaleModel.php';
-
-$saleModel = new SaleModel();
-
-$sales = $saleModel->getSales();
 
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
-    <title>Historial de Ventas</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Historial de ventas</title>
+
     <link rel="stylesheet" href="../../assets/css/style.css">
+
+    <style>
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid var(--gnc-border);
+            border-radius: 8px;
+        }
+    </style>
 </head>
 
 <body>
-
     <div class="navbar">
         <a href="../home.php" class="logo">
-            <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
+            <img
+                src="../../assets/images/GNC_Logo.svg.png"
+                alt="GNC Logo"
+            >
         </a>
+
         <div class="nav-actions">
-            <a href="../logout.php" class="btn">Cerrar Sesión</a>
+            <a href="../logout.php" class="btn">
+                Cerrar sesión
+            </a>
         </div>
     </div>
 
-    <div class="container">
-        <h1 class="title">Historial de Ventas</h1>
-        <p class="subtitle">Registro completo de transacciones realizadas en el sistema.</p>
+    <main class="container">
+        <h1 class="title">Historial de ventas</h1>
 
-        <div style="margin-bottom: 25px;">
-            <a href="../home.php" class="btn">Volver</a>
+        <p class="subtitle">
+            Registro de transacciones realizadas en el sistema.
+            Cada fila muestra un producto de la transacción.
+        </p>
+
+        <div class="history-actions">
+            <a href="../home.php" class="btn">
+                Volver
+            </a>
+
+            <a href="sales.php" class="btn add-btn">
+                Nueva venta
+            </a>
         </div>
 
-        <table>
+        <?php if (isset($_SESSION['success'])): ?>
+            <p class="message" role="status">
+                <?= gncEscape($_SESSION['success']) ?>
+            </p>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
 
-            <tr>
+        <?php if (!$sales): ?>
+            <p>No hay ventas registradas.</p>
+        <?php else: ?>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID de venta</th>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal del producto</th>
+                            <th>Total de la venta</th>
+                            <th>Método de pago</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
 
-                <th>ID</th>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Total</th>
-                <th>Usuario</th>
+                    <tbody>
+                        <?php foreach ($sales as $row): ?>
+                            <tr>
+                                <td>
+                                    <?= (int) $row['venta_id'] ?>
+                                </td>
 
-            </tr>
+                                <td>
+                                    <?= gncEscape($row['fecha_venta']) ?>
+                                </td>
 
-            <?php while ($row = $sales->fetch(PDO::FETCH_ASSOC)) { ?>
+                                <td>
+                                    <?= gncEscape($row['producto']) ?>
+                                </td>
 
-                <tr>
+                                <td>
+                                    <?= (int) $row['cantidad'] ?>
+                                </td>
 
-                    <td>
+                                <td>
+                                    ₡<?= number_format(
+                                        (float) $row['subtotal'],
+                                        2
+                                    ) ?>
+                                </td>
 
-                        <?php echo $row['venta_id']; ?>
+                                <td>
+                                    ₡<?= number_format(
+                                        (float) $row['total'],
+                                        2
+                                    ) ?>
+                                </td>
 
-                    </td>
+                                <td>
+                                    <?= gncEscape($row['metodo_pago']) ?>
+                                </td>
 
-                    <td>
-
-                        <?php echo $row['producto']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <?php echo $row['cantidad']; ?>
-
-                    </td>
-
-                    <td>
-
-                        ₡<?php echo $row['total']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <?php echo $row['usuario']; ?>
-
-                    </td>
-
-
-                </tr>
-
-            <?php } ?>
-
-        </table>
-
+                                <td>
+                                    <?= gncEscape($row['usuario']) ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </main>
 </body>
 
 </html>
