@@ -38,84 +38,50 @@ $sales = $saleModel->getSales();
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial de Ventas</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 
 <body>
 
-    <div class="navbar">
-        <a href="../home.php" class="logo">
-            <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-        </a>
-        <div class="nav-actions">
-            <a href="../logout.php" class="btn">Cerrar Sesión</a>
-        </div>
-    </div>
+    <?php $currentPage = 'history'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
     <div class="container">
         <h1 class="title">Historial de Ventas</h1>
         <p class="subtitle">Registro completo de transacciones realizadas en el sistema.</p>
 
-        <div style="margin-bottom: 25px;">
-            <a href="../home.php" class="btn">Volver</a>
+        <div class="page-actions">
+            <a href="../home.php" class="btn btn-secondary">← Volver</a>
+            <a href="sales.php" class="btn add-btn">Nueva Venta</a>
         </div>
 
-        <table>
-
-            <tr>
-
-                <th>ID</th>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Total</th>
-                <th>Usuario</th>
-
-            </tr>
-
-            <?php while ($row = $sales->fetch(PDO::FETCH_ASSOC)) { ?>
-
+        <div class="table-responsive">
+            <table>
                 <tr>
-
-                    <td>
-
-                        <?php echo $row['venta_id']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <?php echo $row['producto']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <?php echo $row['cantidad']; ?>
-
-                    </td>
-
-                    <td>
-
-                        ₡<?php echo $row['total']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <?php echo $row['usuario']; ?>
-
-                    </td>
-
-
+                    <th>ID</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Total</th>
+                    <th>Usuario</th>
                 </tr>
 
-            <?php } ?>
-
-        </table>
+                <?php while ($row = $sales->fetch(PDO::FETCH_ASSOC)) { ?>
+                    <tr>
+                        <td><?php echo $row['venta_id']; ?></td>
+                        <td><?php echo htmlspecialchars($row['producto']); ?></td>
+                        <td><?php echo $row['cantidad']; ?></td>
+                        <td>₡<?php echo number_format($row['total'], 0, ',', '.'); ?></td>
+                        <td><?php echo htmlspecialchars($row['usuario']); ?></td>
+                    </tr>
+                <?php } ?>
+            </table>
+        </div>
+    </div>
 
 </body>
 

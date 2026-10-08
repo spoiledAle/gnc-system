@@ -64,76 +64,21 @@ $categories = $productModel->getCategories();
 
 <!DOCTYPE html>
 
-<html>
+<html lang="es">
 
 <head>
 
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Productos</title>
 
 <link rel="stylesheet" href="../../assets/css/style.css">
-
-<style>
-
-    .product-img {
-
-        width: 60px;
-
-        height: 60px;
-
-        object-fit: cover;
-
-        border-radius: 8px;
-
-        border: 1px solid var(--gnc-border);
-
-    }
-
-    .filter-container {
-
-        margin-bottom: 20px;
-
-    }
-
-    .filter-btn {
-
-        margin-right: 10px;
-
-    }
-
-    .category-filter {
-
-        margin-top: 15px;
-
-    }
-
-</style>
-
 
 </head>
 
 <body>
 
-
-<div class="navbar">
-
-    <a href="../home.php" class="logo">
-
-        <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-
-    </a>
-
-    <div class="nav-actions">
-
-        <a href="../logout.php" class="btn">
-
-            Cerrar Sesión
-
-        </a>
-
-    </div>
-
-</div>
+<?php $currentPage = 'products'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
 <div class="container">
 
@@ -149,11 +94,11 @@ $categories = $productModel->getCategories();
 
     </p>
 
-    <div style="margin-bottom: 25px;">
+    <div class="page-actions">
 
-        <a href="../home.php" class="btn">
+        <a href="../home.php" class="btn btn-secondary">
 
-            Volver
+            ← Volver
 
         </a>
 
@@ -169,35 +114,11 @@ $categories = $productModel->getCategories();
 
     <div class="filter-container">
 
-        <a href="products.php">
+        <a href="products.php" class="btn filter-btn">Todos</a>
 
-            <button class="btn filter-btn">
+        <a href="products.php?filter=low" class="btn filter-btn">Bajo Stock</a>
 
-                Todos
-
-            </button>
-
-        </a>
-
-        <a href="products.php?filter=low">
-
-            <button class="btn filter-btn">
-
-                Bajo Stock
-
-            </button>
-
-        </a>
-
-        <a href="products.php?filter=out">
-
-            <button class="btn filter-btn">
-
-                Agotados
-
-            </button>
-
-        </a>
+        <a href="products.php?filter=out" class="btn filter-btn">Agotados</a>
 
     </div>
 
@@ -237,6 +158,7 @@ $categories = $productModel->getCategories();
 
     </div>
 
+    <div class="table-responsive">
     <table>
 
         <tr>
@@ -266,6 +188,7 @@ $categories = $productModel->getCategories();
                     <img
                         src="../../assets/images/<?php echo $row['image']; ?>"
                         class="product-img"
+                        alt="<?php echo htmlspecialchars($row['name']); ?>"
                     >
 
                 </td>
@@ -295,27 +218,14 @@ $categories = $productModel->getCategories();
                 </td>
 
                 <td>
-
-                    <a href="modify-product.php?id=<?php echo $row['id']; ?>">
-
-                        <button class="btn">
-
+                    <div class="action-buttons">
+                        <a href="modify-product.php?id=<?php echo $row['id']; ?>" class="btn btn-edit">
                             Editar
-
-                        </button>
-
-                    </a>
-
-                    <a href="../../controllers/ProductController.php?id=<?php echo $row['id']; ?>">
-
-                        <button class="btn">
-
+                        </a>
+                        <a href="../../controllers/ProductController.php?id=<?php echo $row['id']; ?>" class="btn-danger">
                             Eliminar
-
-                        </button>
-
-                    </a>
-
+                        </a>
+                    </div>
                 </td>
 
             </tr>
@@ -323,6 +233,7 @@ $categories = $productModel->getCategories();
         <?php } ?>
 
     </table>
+    </div>
 
 </div>
 

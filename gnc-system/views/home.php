@@ -26,6 +26,7 @@ header("Expires: 0");
 <head>
 
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>GNC SYSTEM</title>
 
@@ -37,17 +38,7 @@ href="../assets/css/style.css">
 
 <body>
 
-<div class="navbar">
-    <a href="home.php" class="logo">
-        <img src="../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-    </a>
-
-    <div class="nav-actions">
-        <a href="logout.php" class="btn">
-            Cerrar Sesión
-        </a>
-    </div>
-</div>
+<?php $currentPage = 'home'; $basePath = ''; include __DIR__ . '/partials/navbar.php'; ?>
 
 <div class="container">
 

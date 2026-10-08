@@ -1,5 +1,17 @@
 <?php
 session_start();
+$inactive = 300;
+if (isset($_SESSION['timeout'])) {
+    $sessionLife = time() - $_SESSION['timeout'];
+    if ($sessionLife > $inactive) {
+        session_unset();
+        session_destroy();
+        header("Location: ../login.php");
+        exit();
+    }
+}
+$_SESSION['timeout'] = time();
+
 if (!isset($_SESSION['user'])) {
     header("Location: ../login.php");
     exit();
@@ -16,75 +28,69 @@ $products = $productModel->getProducts();
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrar Pedido</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 
 <body>
-    <div class="navbar">
-        <a href="../home.php" class="logo">
-            <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-        </a>
-        <div class="nav-actions">
-            <a href="../logout.php" class="btn">Cerrar Sesión</a>
-        </div>
-    </div>
+    <?php $currentPage = 'purchases'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
     <div class="container">
         <h1 class="title">Nuevo Pedido</h1>
         <p class="subtitle">Registra las órdenes de compra enviadas a tus proveedores.</p>
 
-        <div style="margin-bottom: 25px;">
-            <a href="purchases.php" class="btn">Volver a Pedidos</a>
+        <div class="page-actions">
+            <a href="purchases.php" class="btn btn-secondary">← Volver a Pedidos</a>
         </div>
 
-        <div style="max-width: 500px;">
+        <div class="form-container">
             <form method="POST" action="../../controllers/PurchaseController.php">
-                <div style="margin-bottom: 15px;">
-                    <label>Proveedor:</label>
-                    <select name="supplier_id" required>
+                <div class="form-group">
+                    <label for="supplier_id">Proveedor:</label>
+                    <select id="supplier_id" name="supplier_id" required>
                         <option value="">Seleccione proveedor</option>
                         <?php while ($row = $suppliers->fetch(PDO::FETCH_ASSOC)) { ?>
                             <option value="<?php echo $row['id']; ?>">
-                                <?php echo $row['name']; ?>
+                                <?php echo htmlspecialchars($row['name']); ?>
                             </option>
                         <?php } ?>
                     </select>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <label>Producto solicitado:</label>
-                    <select name="product_id" required>
+                <div class="form-group">
+                    <label for="product_id">Producto solicitado:</label>
+                    <select id="product_id" name="product_id" required>
                         <option value="">Seleccione producto</option>
                         <?php while ($row = $products->fetch(PDO::FETCH_ASSOC)) { ?>
                             <option value="<?php echo $row['id']; ?>">
-                                <?php echo $row['name']; ?> (Stock actual: <?php echo $row['stock']; ?>)
+                                <?php echo htmlspecialchars($row['name']); ?> (Stock actual: <?php echo $row['stock']; ?>)
                             </option>
                         <?php } ?>
                     </select>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
-                    <div>
-                        <label>Cantidad (Cajas):</label>
-                        <input type="number" name="quantity_boxes" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="quantity_boxes">Cantidad (Cajas):</label>
+                        <input type="number" id="quantity_boxes" name="quantity_boxes" min="1" required>
                     </div>
-                    <div>
-                        <label>Costo Total (₡):</label>
-                        <input type="number" name="total" required>
+                    <div class="form-group">
+                        <label for="total">Costo Total (₡):</label>
+                        <input type="number" id="total" name="total" min="0" step="any" required>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 25px;">
-                    <label>Estado Inicial:</label>
-                    <select name="status">
+                <div class="form-group">
+                    <label for="status">Estado Inicial:</label>
+                    <select id="status" name="status">
                         <option value="Pendiente">Pendiente</option>
                         <option value="En camino">En camino</option>
                         <option value="Recibido">Recibido</option>
                     </select>
                 </div>
 
-                <button type="submit" class="btn add-btn" style="width: 100%;">Registrar Pedido</button>
+                <button type="submit" class="btn add-btn btn-block">Registrar Pedido</button>
             </form>
         </div>
     </div>
