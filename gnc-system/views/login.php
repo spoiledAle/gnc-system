@@ -18,114 +18,15 @@ if(isset($_SESSION['user'])) {
 <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>GNC Login</title>
 
     <link rel="stylesheet" href="../assets/css/style.css">
 
-    <style>
-
-        body {
-
-            display: flex;
-
-            justify-content: center;
-
-            align-items: center;
-
-            height: 100vh;
-
-            background-color: var(--gnc-bg-main);
-
-            padding: 0;
-
-            margin: 0;
-
-        }
-
-        .login-box {
-
-            width: 100%;
-
-            max-width: 420px;
-
-            background-color: var(--gnc-bg-card);
-
-            padding: 40px;
-
-            border-radius: 16px;
-
-            box-shadow: var(--shadow);
-
-            border: 1px solid var(--gnc-border);
-
-            text-align: center;
-
-        }
-
-        .login-box img {
-
-            width: 180px;
-
-            margin-bottom: 25px;
-
-        }
-
-        .login-box h1 {
-
-            border-left: none;
-
-            padding-left: 0;
-
-            margin-bottom: 30px;
-
-            font-size: 28px;
-
-            text-align: center;
-
-        }
-
-        .input-group {
-
-            margin-bottom: 20px;
-
-            text-align: left;
-
-        }
-
-        .input-group label {
-
-            display: block;
-
-            margin-bottom: 8px;
-
-            color: var(--gnc-text-secondary);
-
-            font-weight: 600;
-
-            font-size: 14px;
-
-        }
-
-        .login-btn {
-
-            width: 100%;
-
-            margin-top: 10px;
-
-        }
-
-        .register-link {
-
-            margin-top: 20px;
-
-        }
-
-    </style>
-
 </head>
 
-<body>
+<body class="auth-body">
 
     <div class="login-box">
 
@@ -138,35 +39,24 @@ if(isset($_SESSION['user'])) {
             Iniciar Sesión
 
         </h1>
-       <?php if(isset($_GET['success'])) { ?>
 
-    <p style="color: #00ff88; margin-bottom: 20px;">
+        <?php if(isset($_GET['success'])) { ?>
+            <div class="alert alert-success">
+                ✓ Usuario registrado correctamente
+            </div>
+        <?php } ?>
 
-        Usuario registrado correctamente
+        <?php if(isset($_GET['error']) && $_GET['error'] == 1) { ?>
+            <div class="alert alert-error">
+                ✕ Correo o contraseña incorrectos
+            </div>
+        <?php } ?>
 
-    </p>
-
-<?php } ?>
-
-<?php if(isset($_GET['error']) && $_GET['error'] == 1) { ?>
-
-    <p style="color: red; margin-bottom: 20px;">
-
-        Correo o contraseña incorrectos
-
-    </p>
-
-<?php } ?>
-
-<?php if(isset($_GET['error']) && $_GET['error'] == 2) { ?>
-
-    <p style="color: orange; margin-bottom: 20px;">
-
-        Todos los campos son obligatorios
-
-    </p>
-
-<?php } ?>
+        <?php if(isset($_GET['error']) && $_GET['error'] == 2) { ?>
+            <div class="alert alert-warning">
+                ⚠ Todos los campos son obligatorios
+            </div>
+        <?php } ?>
 
         <form
         action="../controllers/LoginController.php"

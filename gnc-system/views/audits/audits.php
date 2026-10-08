@@ -2,12 +2,22 @@
 
 session_start();
 
+$inactive = 300;
+
+if (isset($_SESSION['timeout'])) {
+    $sessionLife = time() - $_SESSION['timeout'];
+    if ($sessionLife > $inactive) {
+        session_unset();
+        session_destroy();
+        header("Location: ../login.php");
+        exit();
+    }
+}
+$_SESSION['timeout'] = time();
+
 if(!isset($_SESSION['user'])) {
-
     header("Location: ../login.php");
-
     exit();
-
 }
 
 include_once '../../config/database.php';
@@ -18,133 +28,58 @@ $sql = "SELECT a.*, u.name AS user_name
         ORDER BY a.action_date DESC";
 
 $result = $conn->query($sql);
-
 $numero = $conn->query("SELECT COUNT(*) FROM tbl_auditLogs")->fetchColumn();
 
 ?>
 
 <!DOCTYPE html>
-
 <html lang="es">
 
 <head>
-
-<meta charset="UTF-8">
-
-<title>Auditorías</title>
-
-<link
-rel="stylesheet"
-href="../../assets/css/style.css">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditorías</title>
+    <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 
 <body>
 
-<div class="navbar">
+    <?php $currentPage = 'audits'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
-    <a href="../home.php" class="logo">
+    <div class="container">
+        <h1 class="title">Auditorías del Sistema</h1>
+        <p class="subtitle">Registro automático de acciones realizadas sobre productos del inventario.</p>
 
-        <img
-        src="../../assets/images/GNC_Logo.svg.png"
-        alt="GNC Logo">
+        <div class="page-actions">
+            <a href="../home.php" class="btn btn-secondary">← Volver</a>
+        </div>
 
-    </a>
+        <div class="table-responsive">
+            <table>
+                <tr>
+                    <th style="width: 70px;">No.</th>
+                    <th>Acción</th>
+                    <th>Producto</th>
+                    <th>Usuario</th>
+                    <th>Fecha</th>
+                </tr>
 
-    <div class="nav-actions">
-
-        <a href="../logout.php" class="btn">
-
-            Cerrar Sesión
-
-        </a>
-
+                <?php while($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
+                    <tr>
+                        <td><?php echo $numero--; ?></td>
+                        <td>
+                            <span class="badge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #e0e7ff; color: #3730a3;">
+                                <?php echo htmlspecialchars($row['action_type']); ?>
+                            </span>
+                        </td>
+                        <td><?php echo htmlspecialchars($row['product_name']); ?></td>
+                        <td><?php echo htmlspecialchars($row['user_name'] ?? 'Desconocido'); ?></td>
+                        <td><?php echo $row['action_date']; ?></td>
+                    </tr>
+                <?php } ?>
+            </table>
+        </div>
     </div>
-
-</div>
-
-<div class="container">
-
-    <h1 class="title">
-
-        Auditorías del Sistema
-
-    </h1>
-
-    <p class="subtitle">
-
-        Registro automático de acciones realizadas
-        sobre productos del inventario.
-
-    </p>
-
-    <div style="margin-bottom: 25px;">
-
-        <a href="../home.php" class="btn">
-
-            Volver
-
-        </a>
-
-    </div>
-
-    <table>
-
-        <tr>
-
-            <th>No.</th>
-
-            <th>Acción</th>
-
-            <th>Producto</th>
-
-            <th>Usuario</th>
-
-            <th>Fecha</th>
-
-        </tr>
-
-        <?php while($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
-
-        <tr>
-
-            <td>
-
-                <?php echo $numero--; ?>
-
-            </td>
-
-            <td>
-
-                <?php echo $row['action_type']; ?>
-
-            </td>
-
-            <td>
-
-                <?php echo $row['product_name']; ?>
-
-            </td>
-
-            <td>
-
-                <?php echo $row['user_name'] ?? 'Desconocido'; ?>
-
-            </td>
-
-            <td>
-
-                <?php echo $row['action_date']; ?>
-
-            </td>
-
-        </tr>
-
-        <?php } ?>
-
-    </table>
-
-</div>
 
 </body>
 

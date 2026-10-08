@@ -9,30 +9,24 @@ if(!isset($_SESSION['user'])) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agregar Producto</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body>
-    <div class="navbar">
-        <a href="../home.php" class="logo">
-            <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-        </a>
-        <div class="nav-actions">
-            <a href="../logout.php" class="btn">Cerrar Sesión</a>
-        </div>
-    </div>
+    <?php $currentPage = 'products'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
     <div class="container">
         <h1 class="title">Nuevo Producto</h1>
         <p class="subtitle">Completa la información para dar de alta un nuevo suplemento en el inventario.</p>
 
-        <div style="margin-bottom: 25px;">
-            <a href="products.php" class="btn">Volver al Inventario</a>
+        <div class="page-actions">
+            <a href="products.php" class="btn btn-secondary">← Volver al Inventario</a>
         </div>
 
-        <div style="max-width: 600px;">
+        <div class="form-container">
             <form action="../../controllers/ProductController.php" method="POST" enctype="multipart/form-data">
-                <div style="margin-bottom: 20px;">
+                <div class="form-group">
                     <label>Categoría:</label>
                     <select name="category_id">
                         <option value="1">Proteínas</option>
@@ -43,33 +37,33 @@ if(!isset($_SESSION['user'])) {
                     </select>
                 </div>
 
-                <div style="margin-bottom: 20px;">
+                <div class="form-group">
                     <label>Nombre del Producto:</label>
                     <input type="text" name="name" required placeholder="Ej. Whey Gold Standard">
                 </div>
 
-                <div style="margin-bottom: 20px;">
+                <div class="form-group">
                     <label>Descripción:</label>
-                    <textarea name="description" style="width: 100%; min-height: 100px; padding: 12px; border-radius: 8px; background: var(--gnc-bg-card); color: white; border: 1.5px solid var(--gnc-border); outline: none;"></textarea>
+                    <textarea name="description" placeholder="Descripción del producto..."></textarea>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Precio (₡):</label>
                         <input type="number" name="price" required>
                     </div>
-                    <div>
+                    <div class="form-group">
                         <label>Stock Inicial:</label>
                         <input type="number" name="stock" required>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 30px;">
+                <div class="form-group">
                     <label>Imagen del Producto:</label>
-                    <input type="file" name="image" style="padding: 10px 0;" required>
+                    <input type="file" name="image" required>
                 </div>
 
-                <button type="submit" class="btn add-btn" style="width: 100%;">
+                <button type="submit" class="btn add-btn btn-block">
                     Guardar Producto
                 </button>
             </form>

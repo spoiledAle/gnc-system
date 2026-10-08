@@ -2,94 +2,76 @@
 
 session_start();
 
+$inactive = 300;
+
+if (isset($_SESSION['timeout'])) {
+    $sessionLife = time() - $_SESSION['timeout'];
+    if ($sessionLife > $inactive) {
+        session_unset();
+        session_destroy();
+        header("Location: ../login.php");
+        exit();
+    }
+}
+$_SESSION['timeout'] = time();
+
 if (!isset($_SESSION['user'])) {
-
     header("Location: ../login.php");
-
     exit();
 }
 
 include_once '../../models/PaymentMethodModel.php';
 
 $paymentModel = new PaymentMethodModel();
-
 $result = $paymentModel->getMethods();
 
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Métodos de Pago</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 
 <body>
 
-    <div class="navbar">
-        <a href="../home.php" class="logo">
-            <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-        </a>
-        <div class="nav-actions">
-            <a href="../logout.php" class="btn">Cerrar Sesión</a>
-        </div>
-    </div>
+    <?php $currentPage = 'payment_methods'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
     <div class="container">
         <h1 class="title">Métodos de Pago</h1>
         <p class="subtitle">Opciones de cobro habilitadas en el punto de venta.</p>
 
-        <div style="margin-bottom: 25px;">
-            <a href="../home.php" class="btn">Volver</a>
+        <div class="page-actions">
+            <a href="../home.php" class="btn btn-secondary">← Volver</a>
             <a href="add-method.php" class="btn add-btn">Agregar Método</a>
         </div>
 
-        <table>
-
-            <tr>
-
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Acciones</th>
-
-            </tr>
-
-            <?php while ($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
-
+        <div class="table-responsive">
+            <table>
                 <tr>
-
-                    <td>
-
-                        <?php echo $row['id']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <?php echo $row['name']; ?>
-
-                    </td>
-
-                    <td>
-
-                        <a href="../../controllers/PaymentMethodController.php?id=<?php echo $row['id']; ?>">
-
-                            <button class="delete-btn">
-
-                                Eliminar
-
-                            </button>
-
-                        </a>
-
-                    </td>
-
+                    <th style="width: 80px;">ID</th>
+                    <th>Nombre</th>
+                    <th style="width: 120px;">Acciones</th>
                 </tr>
 
-            <?php } ?>
-
-        </table>
+                <?php while ($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
+                    <tr>
+                        <td><?php echo $row['id']; ?></td>
+                        <td><?php echo htmlspecialchars($row['name']); ?></td>
+                        <td>
+                            <a href="../../controllers/PaymentMethodController.php?id=<?php echo $row['id']; ?>" class="btn-danger">
+                                Eliminar
+                            </a>
+                        </td>
+                    </tr>
+                <?php } ?>
+            </table>
+        </div>
+    </div>
 
 </body>
 

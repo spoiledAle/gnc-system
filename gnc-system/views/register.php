@@ -12,108 +12,15 @@ session_destroy();
 <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Registrar Usuario</title>
 
     <link rel="stylesheet" href="../assets/css/style.css">
 
-    <style>
-
-        body {
-
-            display: flex;
-
-            justify-content: center;
-
-            align-items: center;
-
-            height: 100vh;
-
-            background-color: var(--gnc-bg-main);
-
-            padding: 0;
-
-            margin: 0;
-
-        }
-
-        .login-box {
-
-            width: 100%;
-
-            max-width: 420px;
-
-            background-color: var(--gnc-bg-card);
-
-            padding: 40px;
-
-            border-radius: 16px;
-
-            box-shadow: var(--shadow);
-
-            border: 1px solid var(--gnc-border);
-
-            text-align: center;
-
-        }
-
-        .login-box img {
-
-            width: 180px;
-
-            margin-bottom: 25px;
-
-        }
-
-        .login-box h1 {
-
-            border-left: none;
-
-            padding-left: 0;
-
-            margin-bottom: 30px;
-
-            font-size: 28px;
-
-            text-align: center;
-
-        }
-
-        .input-group {
-
-            margin-bottom: 20px;
-
-            text-align: left;
-
-        }
-
-        .input-group label {
-
-            display: block;
-
-            margin-bottom: 8px;
-
-            color: var(--gnc-text-secondary);
-
-            font-weight: 600;
-
-            font-size: 14px;
-
-        }
-
-        .login-btn {
-
-            width: 100%;
-
-            margin-top: 10px;
-
-        }
-
-    </style>
-
 </head>
 
-<body>
+<body class="auth-body">
 
     <div class="login-box">
 
