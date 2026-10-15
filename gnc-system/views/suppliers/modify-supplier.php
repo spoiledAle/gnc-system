@@ -1,5 +1,17 @@
 <?php
 session_start();
+$inactive = 300;
+if (isset($_SESSION['timeout'])) {
+    $sessionLife = time() - $_SESSION['timeout'];
+    if ($sessionLife > $inactive) {
+        session_unset();
+        session_destroy();
+        header("Location: ../login.php");
+        exit();
+    }
+}
+$_SESSION['timeout'] = time();
+
 if(!isset($_SESSION['user'])) {
     header("Location: ../login.php");
     exit();
@@ -13,52 +25,46 @@ $supplier = $supplierModel->getSupplierById($id);
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modificar Proveedor</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body>
-    <div class="navbar">
-        <a href="../home.php" class="logo">
-            <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC Logo">
-        </a>
-        <div class="nav-actions">
-            <a href="../logout.php" class="btn">Cerrar Sesión</a>
-        </div>
-    </div>
+    <?php $currentPage = 'suppliers'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
 
     <div class="container">
         <h1 class="title">Modificar Proveedor</h1>
         <p class="subtitle">Actualiza los datos de contacto o ubicación de tu socio comercial.</p>
 
-        <div style="margin-bottom: 25px;">
-            <a href="suppliers.php" class="btn">Volver a Proveedores</a>
+        <div class="page-actions">
+            <a href="suppliers.php" class="btn btn-secondary">← Volver a Proveedores</a>
         </div>
 
-        <div style="max-width: 500px;">
+        <div class="form-container">
             <form method="POST" action="../../controllers/SupplierController.php">
                 <input type="hidden" name="id" value="<?php echo $supplier['id']; ?>">
                 
-                <div style="margin-bottom: 15px;">
-                    <label>Nombre Comercial:</label>
-                    <input type="text" name="name" value="<?php echo $supplier['name']; ?>" required>
+                <div class="form-group">
+                    <label for="name">Nombre Comercial:</label>
+                    <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($supplier['name']); ?>" required>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <label>Teléfono de Contacto:</label>
-                    <input type="text" name="phone" value="<?php echo $supplier['phone']; ?>" required>
+                <div class="form-group">
+                    <label for="phone">Teléfono de Contacto:</label>
+                    <input type="text" id="phone" name="phone" value="<?php echo htmlspecialchars($supplier['phone']); ?>" required>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <label>Correo Electrónico:</label>
-                    <input type="email" name="email" value="<?php echo $supplier['email']; ?>" required>
+                <div class="form-group">
+                    <label for="email">Correo Electrónico:</label>
+                    <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($supplier['email']); ?>" required>
                 </div>
 
-                <div style="margin-bottom: 25px;">
-                    <label>Dirección Física:</label>
-                    <input type="text" name="address" value="<?php echo $supplier['address']; ?>" required>
+                <div class="form-group">
+                    <label for="address">Dirección Física:</label>
+                    <input type="text" id="address" name="address" value="<?php echo htmlspecialchars($supplier['address']); ?>" required>
                 </div>
 
-                <button type="submit" name="update" class="btn add-btn" style="width: 100%;">Actualizar Proveedor</button>
+                <button type="submit" name="update" class="btn add-btn btn-block">Actualizar Proveedor</button>
             </form>
         </div>
     </div>

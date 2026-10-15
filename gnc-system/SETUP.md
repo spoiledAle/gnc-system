@@ -60,7 +60,7 @@ extensiones: `pdo_sqlsrv` y `sqlsrv`.
 
 ## 4. Configurar la conexión
 
-1. Copia [`config/database.local.example.php`](config/database.local.example.php)
+1. Copia [`config/database.local.example.php`](config/database.local.php)
    como `config/database.local.php` (en la misma carpeta).
 2. Ábrelo y pon el nombre de tu servidor en `$host`, tal como aparece en el
    cuadro "Server name" cuando te conectas por SSMS (por ejemplo `localhost`,

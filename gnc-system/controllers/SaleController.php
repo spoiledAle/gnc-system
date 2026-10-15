@@ -1,254 +1,161 @@
 <?php
-session_start();
-include_once '../models/SaleModel.php';
 
-$saleModel = new SaleModel();
+require_once __DIR__ . '/../config/auth_check.php';
+requireRole(['ADMIN', 'EMPLEADO', 'CLIENTE']);
 
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
-}
+require_once __DIR__ . '/../config/forms.php';
+require_once __DIR__ . '/../models/SaleModel.php';
 
-if (isset($_GET['action'])) {
+gncValidatePost();
 
-    if ($_GET['action'] == 'remove' && isset($_GET['index'])) {
+$model = new SaleModel();
 
-        unset($_SESSION['cart'][$_GET['index']]);
+$_SESSION['cart'] ??= [];
+$action = $_POST['action'] ?? '';
 
-        $_SESSION['cart'] = array_values($_SESSION['cart']);
-    }
+try {
+    if ($action === 'add') {
+        $id = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
+        $quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
 
-    if ($_GET['action'] == 'empty') {
+        if (!$id || !$quantity || $quantity < 1 || $quantity > 100000) {
+            throw new RuntimeException('Producto o cantidad inválida.');
+        }
 
-        $_SESSION['cart'] = [];
+        $product = $model->getProductStock($id);
 
-        unset($_SESSION['edit_index']);
-    }
+        if (!$product) {
+            throw new RuntimeException('Producto no encontrado.');
+        }
 
-    if ($_GET['action'] == 'edit' && isset($_GET['index'])) {
+        $index = null;
 
-        $_SESSION['edit_index'] = $_GET['index'];
-    }
-
-    if ($_GET['action'] == 'cancel_edit') {
-
-        unset($_SESSION['edit_index']);
-    }
-
-    header("Location: ../views/sales/sales.php");
-
-    exit();
-}
-
-if (isset($_POST['add_to_cart']) || isset($_POST['update_item'])) {
-
-    $product_id = filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);
-
-    $quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
-
-    if (empty($quantity) || $quantity <= 0) {
-
-        $_SESSION['error'] = "La cantidad ingresada no es válida.";
-
-        header("Location: ../views/sales/sales.php");
-
-        exit();
-    }
-
-    $product = $saleModel->getProductStock($product_id);
-
-    if (!$product) {
-
-        $_SESSION['error'] = "El producto seleccionado no existe.";
-
-        header("Location: ../views/sales/sales.php");
-
-        exit();
-    }
-
-    if ($quantity > $product['stock']) {
-
-        $_SESSION['error'] = "Stock insuficiente para " . htmlspecialchars($product['name']) . ".";
-
-        header("Location: ../views/sales/sales.php");
-
-        exit();
-    }
-
-    $subtotal = $product['price'] * $quantity;
-
-    $itemData = [
-
-        'product_id' => $product_id,
-
-        'product_name' => $product['name'],
-
-        'quantity' => $quantity,
-
-        'subtotal' => $subtotal
-
-    ];
-
-    if (isset($_POST['update_item']) && isset($_POST['edit_index'])) {
-
-        $index = $_POST['edit_index'];
-
-        $_SESSION['cart'][$index] = $itemData;
-
-        unset($_SESSION['edit_index']);
-
-    } else {
-
-        $found = false;
-
-        foreach ($_SESSION['cart'] as &$cartItem) {
-
-            if ($cartItem['product_id'] == $product_id) {
-
-                $newQuantity = $cartItem['quantity'] + $quantity;
-
-                if ($newQuantity > $product['stock']) {
-
-                    $_SESSION['error'] = "No hay suficiente stock disponible.";
-
-                    header("Location: ../views/sales/sales.php");
-
-                    exit();
-                }
-
-                $cartItem['quantity'] = $newQuantity;
-
-                $cartItem['subtotal'] =
-                    $cartItem['quantity'] * $product['price'];
-
-                $found = true;
-
+        foreach ($_SESSION['cart'] as $i => $item) {
+            if ((int) $item['product_id'] === $id) {
+                $index = $i;
                 break;
             }
         }
 
-        if (!$found) {
+        $quantity += $index !== null
+            ? (int) $_SESSION['cart'][$index]['quantity']
+            : 0;
 
-            $_SESSION['cart'][] = $itemData;
+        if ($quantity > (int) $product['stock']) {
+            throw new RuntimeException('Stock insuficiente.');
         }
-    }
 
-    header("Location: ../views/sales/sales.php");
+        $item = [
+            'product_id' => $id,
+            'product_name' => $product['name'],
+            'quantity' => $quantity,
+            'subtotal' => $quantity * (float) $product['price'],
+        ];
 
-    exit();
-}
+        if ($index === null) {
+            $_SESSION['cart'][] = $item;
+        } else {
+            $_SESSION['cart'][$index] = $item;
+        }
+    } elseif ($action === 'remove') {
+        $index = filter_input(INPUT_POST, 'index', FILTER_VALIDATE_INT);
 
-if (isset($_POST['finish_sale'])) {
+        if (
+            $index === false
+            || $index === null
+            || !isset($_SESSION['cart'][$index])
+        ) {
+            throw new RuntimeException('Producto del carrito inválido.');
+        }
 
-    if (empty($_SESSION['cart'])) {
+        unset($_SESSION['cart'][$index]);
+        $_SESSION['cart'] = array_values($_SESSION['cart']);
+    } elseif ($action === 'empty') {
+        $_SESSION['cart'] = [];
+        unset($_SESSION['checkoutToken']);
+    } elseif ($action === 'finish') {
+        $token = $_POST['checkoutToken'] ?? '';
 
-        $_SESSION['error'] =
-            "No puedes finalizar una venta con el carrito vacío.";
+        if (
+            !is_string($token)
+            || !isset($_SESSION['checkoutToken'])
+            || !hash_equals($_SESSION['checkoutToken'], $token)
+        ) {
+            throw new RuntimeException('Solicitud vencida. Recarga el carrito.');
+        }
 
-        header("Location: ../views/sales/sales.php");
+        if (!$_SESSION['cart']) {
+            throw new RuntimeException('El carrito está vacío.');
+        }
 
-        exit();
-    }
-
-    $payment_method_id = $_POST['payment_method_id'];
-
-    $total = 0;
-
-    foreach ($_SESSION['cart'] as $item) {
-
-        $total += $item['subtotal'];
-    }
-
-    $user_id = $_SESSION['user']['id'];
-
-    $conn = $saleModel->getConnection();
-
-    $conn->beginTransaction();
-
-    try {
-
-        $sale_id = $saleModel->createSale(
-
-            $total,
-
-            $user_id,
-
-            $payment_method_id
+        $payment = filter_input(
+            INPUT_POST,
+            'payment_method_id',
+            FILTER_VALIDATE_INT
         );
 
-        if (!$sale_id) {
-
-            throw new Exception(
-                "No se pudo registrar la cabecera de la venta."
-            );
+        if (!$payment) {
+            throw new RuntimeException('Selecciona un método de pago.');
         }
 
-        foreach ($_SESSION['cart'] as $item) {
+        $items = array_map(
+            static fn ($item) => [
+                'product_id' => (int) $item['product_id'],
+                'quantity' => (int) $item['quantity'],
+            ],
+            $_SESSION['cart']
+        );
 
-            $product =
-                $saleModel->getProductStockForUpdate(
-                    $item['product_id']
-                );
+        $statement = $conn->prepare("
+            EXEC dbo.pa_finalizarVenta
+                @items = ?,
+                @paymentMethodId = ?,
+                @token = ?
+        ");
 
-            if (!$product) {
+        $statement->execute([
+            json_encode($items, JSON_THROW_ON_ERROR),
+            $payment,
+            $token,
+        ]);
 
-                throw new Exception(
-                    "Producto no encontrado."
-                );
-            }
+        $sale = $statement->fetch(PDO::FETCH_ASSOC);
+        $statement->closeCursor();
 
-            if ($item['quantity'] > $product['stock']) {
-
-                throw new Exception(
-                    "Stock insuficiente para "
-                    . $product['name']
-                    . ". Disponible: "
-                    . $product['stock']
-                );
-            }
-
-            $detail_inserted = $saleModel->addSaleDetail(
-
-                $sale_id,
-
-                $item['product_id'],
-
-                $item['quantity'],
-
-                $item['subtotal']
-            );
-
-            if (!$detail_inserted) {
-
-                throw new Exception(
-                    "Error al insertar el detalle de la venta."
-                );
-            }
+        if (!$sale) {
+            throw new RuntimeException('No se pudo confirmar la operación.');
         }
-
-        $conn->commit();
 
         $_SESSION['cart'] = [];
+        unset($_SESSION['checkoutToken'], $_SESSION['edit_index']);
 
         $_SESSION['success'] =
-            "Venta registrada exitosamente.";
+            'Transacción #' . $sale['sale_id'] . ' registrada correctamente.';
 
-        header(
-            "Location: ../views/sales/sales-history.php"
-        );
+        $destination = $_SESSION['user']['role'] === 'CLIENTE'
+            ? 'my-purchases.php'
+            : 'sales-history.php';
 
-        exit();
-
-    } catch (Exception $e) {
-
-        $conn->rollBack();
-
-        $_SESSION['error'] = $e->getMessage();
-
-        header("Location: ../views/sales/sales.php");
-
-        exit();
+        header('Location: ../views/sales/' . $destination);
+        exit;
+    } else {
+        throw new RuntimeException('Acción inválida.');
     }
+} catch (PDOException $exception) {
+    $code = (int) ($exception->errorInfo[1] ?? 0);
+
+    error_log('GNC: registrar transacción. Código: ' . $code);
+
+    $_SESSION['error'] = in_array(
+        $code,
+        [51102, 51103, 51104, 51105, 51106, 51107, 50002],
+        true
+    )
+        ? 'Revisa productos, cantidades, stock y método de pago.'
+        : 'No se pudo guardar la operación. Revisa la consola PHP.';
+} catch (RuntimeException $exception) {
+    $_SESSION['error'] = $exception->getMessage();
 }
 
-// Alessandro add
-?>
+header('Location: ../views/sales/sales.php');
+exit;

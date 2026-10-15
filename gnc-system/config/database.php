@@ -1,44 +1,19 @@
 <?php
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-
-$host = "localhost";
-
-$database = "GNCPROYECTO";
-
-
-$user = null;
-
-$password = null;
-
-
-if (file_exists(__DIR__ . '/database.local.php')) {
-    include __DIR__ . '/database.local.php';
-}
-
-$dsn = "sqlsrv:Server=$host;Database=$database;TrustServerCertificate=true";
+require_once __DIR__ . '/auth_check.php';
 
 try {
+    $statement = $conn->prepare("
+        EXEC sys.sp_set_session_context
+            @key = N'user_id',
+            @value = ?
+    ");
 
-    $conn = new PDO($dsn, $user, $password, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    ]);
+    $statement->execute([$_SESSION['user']['id']]);
+    $statement->closeCursor();
+} catch (PDOException $exception) {
+    error_log('GNC: no se pudo establecer el contexto de usuario.');
 
-} catch (PDOException $e) {
-
-    die("Error de conexión: " . $e->getMessage());
-
+    http_response_code(503);
+    exit('No se pudo preparar la conexión del usuario.');
 }
-
-if (isset($_SESSION['user']['id'])) {
-
-    $stmt = $conn->prepare("EXEC sp_set_session_context @key = N'user_id', @value = ?");
-
-    $stmt->execute([$_SESSION['user']['id']]);
-
-}
-
-?>
