@@ -4,47 +4,49 @@ include_once '../config/database.php';
 
 echo "<h1>Prueba Unitaria - Auditorías</h1>";
 
-$sql = "SELECT * FROM tbl_auditLogs";
+$tables = ['tbl_auditProducts', 'tbl_auditSales', 'tbl_auditSessions'];
 
-$result = $conn->query($sql);
+foreach ($tables as $table) {
 
-if($result) {
+    try {
 
-    $rows = $result->fetchAll(PDO::FETCH_ASSOC);
+        $count = $conn->query("SELECT COUNT(*) FROM $table")->fetchColumn();
 
-    echo "
+        echo "
 
-    <h2 style='color: green;'>
+        <h2 style='color: green;'>
 
-        TEST EXITOSO
+            TEST EXITOSO: $table
 
-    </h2>
+        </h2>
 
-    <p>
+        <p>
 
-        La tabla de auditorías es accesible y la consulta fue exitosa. Registros encontrados: " . count($rows) . "
+            La tabla de auditoría es accesible. Registros encontrados: $count
 
-    </p>
+        </p>
 
-    ";
+        ";
 
-} else {
+    } catch (PDOException $exception) {
 
-    echo "
+        echo "
 
-    <h2 style='color: red;'>
+        <h2 style='color: red;'>
 
-        TEST FALLIDO
+            TEST FALLIDO: $table
 
-    </h2>
+        </h2>
 
-    <p>
+        <p>
 
-        No existen auditorías registradas.
+            No se pudo consultar la tabla (no existe o el usuario no es administrador).
 
-    </p>
+        </p>
 
-    ";
+        ";
+
+    }
 
 }
 

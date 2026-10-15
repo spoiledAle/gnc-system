@@ -9,17 +9,8 @@ GO
 
 
 /*================ Tablas =================*/
--- Tabla: tbl_auditLogs
-IF OBJECT_ID('dbo.tbl_auditLogs', 'U') IS NOT NULL DROP TABLE dbo.tbl_auditLogs;
-GO
-CREATE TABLE dbo.tbl_auditLogs (
-    id            INT IDENTITY(1,1) NOT NULL,
-    action_type   VARCHAR(50)  NULL,
-    product_name  VARCHAR(100) NULL,
-    action_date   DATETIME     NULL DEFAULT GETDATE(),
-    CONSTRAINT PK_audit_logs PRIMARY KEY (id)
-);
-GO
+-- Las tablas de auditoría (tbl_audit*) se crean en la sección
+-- "AUDITORÍA DE LA BASE DE DATOS", al final de este script.
 
 -- Tabla: tbl_categories
 IF OBJECT_ID('dbo.tbl_categories', 'U') IS NOT NULL DROP TABLE dbo.tbl_categories;
@@ -229,34 +220,6 @@ INSERT INTO dbo.tbl_saleDetails (id, sale_id, product_id, quantity, subtotal) VA
     (10, 10, 3, 1, 19000.00),
     (11, 11, 5, 1, 18000.00);
 SET IDENTITY_INSERT dbo.tbl_saleDetails OFF;
-GO
-
--- auditLogs
-SET IDENTITY_INSERT dbo.tbl_auditLogs ON;
-INSERT INTO dbo.tbl_auditLogs (id, action_type, product_name, action_date) VALUES
-    (1, N'INSERT', N'Whey Protein', '2026-06-09T16:15:10'),
-    (2, N'UPDATE', N'Whey Protein', '2026-06-09T16:16:52'),
-    (3, N'UPDATE', N'Whey Protein', '2026-06-09T16:16:52'),
-    (4, N'UPDATE', N'Whey Protein', '2026-06-09T16:17:17'),
-    (5, N'UPDATE', N'Whey Protein', '2026-06-09T16:18:02'),
-    (6, N'INSERT', N'Creatina Monohidratada', '2026-06-09T16:37:57'),
-    (7, N'DELETE', N'Creatina Monohidratada', '2026-06-09T16:38:23'),
-    (8, N'INSERT', N'Pre entreno BUM Strawberry', '2026-06-09T16:46:40'),
-    (9, N'INSERT', N'Vitamina C Member Selection', '2026-06-09T16:49:10'),
-    (10, N'UPDATE', N'Whey Protein', '2026-06-09T16:51:55'),
-    (11, N'INSERT', N'Creatina Monohidratada', '2026-06-09T16:52:41'),
-    (12, N'DELETE', N'Creatina Monohidratada', '2026-06-09T16:52:46'),
-    (13, N'UPDATE', N'Whey Protein', '2026-06-09T16:59:40'),
-    (14, N'UPDATE', N'Whey Protein', '2026-06-09T17:00:04'),
-    (18, N'UPDATE', N'Pre entreno BUM Strawberry', '2026-06-09T17:00:49'),
-    (19, N'UPDATE', N'Pre entreno BUM Strawberry', '2026-06-09T17:00:49'),
-    (21, N'UPDATE', N'Whey Protein', '2026-06-09T17:01:15'),
-    (22, N'UPDATE', N'Whey Protein', '2026-06-09T17:01:27'),
-    (25, N'UPDATE', N'Vitamina C Member Selection', '2026-06-09T17:42:31'),
-    (26, N'UPDATE', N'Vitamina C Member Selection', '2026-06-09T17:42:31'),
-    (27, N'UPDATE', N'Whey Protein', '2026-06-09T18:39:58'),
-    (28, N'UPDATE', N'Pre entreno BUM Strawberry', '2026-06-09T18:40:05');
-SET IDENTITY_INSERT dbo.tbl_auditLogs OFF;
 GO
 
 /*================ PROCEDIMIENTOS ALMACENADOS ================*/
@@ -752,51 +715,9 @@ GROUP BY
 GO
 
 /*================ DISPARADORES -->TRIGGERS ================*/
---dis01
-CREATE OR ALTER TRIGGER dbo.dis_auditInsertProduct
-ON dbo.tbl_products
-AFTER INSERT
-AS
-BEGIN
-    SET NOCOUNT ON;
+-- Los disparadores de auditoría (dis01 a dis03) están en la sección
+-- "AUDITORÍA DE LA BASE DE DATOS", al final de este script.
 
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
-    SELECT 'INSERT', name
-    FROM inserted;
-END
-GO
-
-/*================ DISPARADORES -->TRIGGERS ================*/
---dis02
-CREATE OR ALTER TRIGGER dbo.dis_auditUpdateProduct
-ON dbo.tbl_products
-AFTER UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
-    SELECT 'UPDATE', name
-    FROM inserted;
-END
-GO
-
-/*================ DISPARADORES -->TRIGGERS ================*/
---dis03
-CREATE OR ALTER TRIGGER dbo.dis_auditDeleteProduct
-ON dbo.tbl_products
-AFTER DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO dbo.tbl_auditLogs (action_type, product_name)
-    SELECT 'DELETE', name
-    FROM deleted;
-END
-GO
-
-/*================ DISPARADORES -->TRIGGERS ================*/
 --dis04
 CREATE OR ALTER TRIGGER dbo.dis_decreaseStockAfterSale
 ON dbo.tbl_saleDetails
@@ -1577,7 +1498,6 @@ DENY INSERT, UPDATE, DELETE ON dbo.tbl_categories TO rolEmpleado;
 DENY INSERT, UPDATE, DELETE ON dbo.tbl_suppliers TO rolEmpleado;
 DENY INSERT, UPDATE, DELETE ON dbo.tbl_paymentMethods TO rolEmpleado;
 DENY INSERT, UPDATE, DELETE ON dbo.tbl_users TO rolEmpleado;
-DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_auditLogs TO rolEmpleado;
 GO
 GRANT SELECT ON dbo.tbl_categories TO rolCliente;
 DENY INSERT, UPDATE, DELETE ON dbo.tbl_categories TO rolCliente;
@@ -1588,7 +1508,6 @@ DENY INSERT, UPDATE, DELETE ON dbo.tbl_paymentMethods TO rolCliente;
 DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_suppliers TO rolCliente;
 DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_purchases TO rolCliente;
 DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_purchaseDetails TO rolCliente;
-DENY SELECT, INSERT, UPDATE, DELETE ON dbo.tbl_auditLogs TO rolCliente;
 GO
 /* Perfil vinculado al login SQL: necesario ANTES de las vistas nuevas. */
 IF COL_LENGTH('dbo.tbl_users', 'sqlLogin') IS NULL
@@ -2280,4 +2199,479 @@ WHERE name IN ('gnc_admin', 'gnc_empleado', 'gnc_cliente', 'gnc_registro');
 GO
 SELECT name, compatibility_level
 FROM sys.databases WHERE name = DB_NAME();
+GO
+
+/* ============================================================
+   AUDITORÍA DE LA BASE DE DATOS
+
+   Objetivo:
+   Registrar quién, cuándo y qué cambió en la información crítica
+   del negocio (inventario, ventas y acceso al sistema), sin
+   auditar indiscriminadamente todas las tablas.
+
+   Alcance:
+   - tbl_products     INSERT, UPDATE, DELETE  -> tbl_auditProducts
+   - tbl_sales        INSERT, UPDATE, DELETE  -> tbl_auditSales
+   - tbl_saleDetails  INSERT, UPDATE, DELETE  -> tbl_auditSales
+   - Inicio, cierre y expiración de sesión     -> tbl_auditSessions
+
+   Identificación del usuario:
+   Cada usuario de la aplicación se conecta a SQL Server con su
+   propio login (gnc_admin, gnc_empleado, cliente_xxx), así que
+   ORIGINAL_LOGIN() devuelve al usuario real y se busca su id en
+   tbl_users.sqlLogin. Si el cambio se hace con un login que no
+   pertenece a la aplicación (por ejemplo, desde SSMS con Windows
+   Authentication), se usa el valor 'user_id' que PHP guarda con
+   sp_set_session_context (config/database.php). En todos los
+   casos se conserva también el nombre del login.
+
+   Inicio y cierre de sesión:
+   No modifican ninguna tabla, por lo que un trigger de datos no
+   los detecta. La aplicación llama al procedimiento
+   dbo.pa_registrarSesion al iniciar sesión, al cerrarla y cuando
+   la sesión expira. Los intentos fallidos no llegan a abrir una
+   conexión; SQL Server ya los registra en su propio log de
+   errores (auditoría de inicio de sesión de la instancia).
+   ============================================================ */
+
+USE gncproyecto;
+GO
+
+-- La tabla anterior (tbl_auditLogs) solo guardaba la acción y el
+-- nombre del producto; se reemplaza por tbl_auditProducts.
+DROP TABLE IF EXISTS dbo.tbl_auditLogs;
+GO
+
+
+/*================ TABLAS DE AUDITORÍA ================*/
+
+/* ------------------------------------------------------------
+   AUD1: tbl_auditProducts
+   Propósito: historial de cambios del inventario. Guarda el
+   valor anterior y el nuevo de nombre, categoría, precio y stock.
+   Llave primaria: id (IDENTITY).
+   Recibe datos de: dis_auditProducts.
+   No tiene llaves foráneas a propósito: el historial debe
+   conservarse aunque el producto o el usuario se eliminen.
+   ------------------------------------------------------------ */
+DROP TABLE IF EXISTS dbo.tbl_auditProducts;
+GO
+CREATE TABLE dbo.tbl_auditProducts (
+    id               INT IDENTITY(1,1) NOT NULL,
+    operation        VARCHAR(6)    NOT NULL,
+    product_id       INT           NOT NULL,
+    old_name         VARCHAR(100)  NULL,
+    new_name         VARCHAR(100)  NULL,
+    old_category_id  INT           NULL,
+    new_category_id  INT           NULL,
+    old_price        DECIMAL(10,2) NULL,
+    new_price        DECIMAL(10,2) NULL,
+    old_stock        INT           NULL,
+    new_stock        INT           NULL,
+    user_id          INT           NULL,
+    login_name       NVARCHAR(128) NOT NULL
+        CONSTRAINT DF_audit_products_login DEFAULT ORIGINAL_LOGIN(),
+    action_date      DATETIME2(0)  NOT NULL
+        CONSTRAINT DF_audit_products_date DEFAULT SYSDATETIME(),
+    CONSTRAINT PK_audit_products PRIMARY KEY (id),
+    CONSTRAINT CK_audit_products_operation
+        CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE'))
+);
+GO
+
+/* ------------------------------------------------------------
+   AUD2: tbl_auditSales
+   Propósito: historial de ventas y de sus detalles. Como las dos
+   tablas tienen columnas distintas, los valores anteriores y
+   nuevos se guardan en formato JSON.
+   Llave primaria: id (IDENTITY).
+   Recibe datos de: dis_auditSales y dis_auditSaleDetails.
+   ------------------------------------------------------------ */
+DROP TABLE IF EXISTS dbo.tbl_auditSales;
+GO
+CREATE TABLE dbo.tbl_auditSales (
+    id           INT IDENTITY(1,1) NOT NULL,
+    table_name   VARCHAR(30)    NOT NULL,
+    operation    VARCHAR(6)     NOT NULL,
+    record_id    INT            NOT NULL,
+    sale_id      INT            NOT NULL,
+    old_values   NVARCHAR(MAX)  NULL,
+    new_values   NVARCHAR(MAX)  NULL,
+    user_id      INT            NULL,
+    login_name   NVARCHAR(128)  NOT NULL
+        CONSTRAINT DF_audit_sales_login DEFAULT ORIGINAL_LOGIN(),
+    action_date  DATETIME2(0)   NOT NULL
+        CONSTRAINT DF_audit_sales_date DEFAULT SYSDATETIME(),
+    CONSTRAINT PK_audit_sales PRIMARY KEY (id),
+    CONSTRAINT CK_audit_sales_table
+        CHECK (table_name IN ('tbl_sales', 'tbl_saleDetails')),
+    CONSTRAINT CK_audit_sales_operation
+        CHECK (operation IN ('INSERT', 'UPDATE', 'DELETE')),
+    CONSTRAINT CK_audit_sales_old_json
+        CHECK (old_values IS NULL OR ISJSON(old_values) = 1),
+    CONSTRAINT CK_audit_sales_new_json
+        CHECK (new_values IS NULL OR ISJSON(new_values) = 1)
+);
+GO
+
+/* ------------------------------------------------------------
+   AUD3: tbl_auditSessions
+   Propósito: registrar cuándo cada usuario entra y sale del
+   sistema, y desde qué IP.
+   Llave primaria: id (IDENTITY).
+   Recibe datos de: pa_registrarSesion, llamado desde PHP.
+   ------------------------------------------------------------ */
+DROP TABLE IF EXISTS dbo.tbl_auditSessions;
+GO
+CREATE TABLE dbo.tbl_auditSessions (
+    id          INT IDENTITY(1,1) NOT NULL,
+    event       VARCHAR(10)    NOT NULL,
+    user_id     INT            NULL,
+    login_name  NVARCHAR(128)  NOT NULL
+        CONSTRAINT DF_audit_sessions_login DEFAULT ORIGINAL_LOGIN(),
+    client_ip   VARCHAR(45)    NULL,
+    event_date  DATETIME2(0)   NOT NULL
+        CONSTRAINT DF_audit_sessions_date DEFAULT SYSDATETIME(),
+    CONSTRAINT PK_audit_sessions PRIMARY KEY (id),
+    CONSTRAINT CK_audit_sessions_event
+        CHECK (event IN ('LOGIN', 'LOGOUT', 'EXPIRADA'))
+);
+GO
+
+
+/*================ FUNCIÓN DE APOYO ================*/
+
+/* ------------------------------------------------------------
+   fn_auditUserId
+   Devuelve el id (tbl_users) del usuario que hace el cambio.
+   1. Busca el login de la conexión en tbl_users.sqlLogin.
+   2. Si no lo encuentra, usa SESSION_CONTEXT('user_id').
+   3. Si tampoco existe, devuelve NULL (el login queda guardado).
+   ------------------------------------------------------------ */
+CREATE OR ALTER FUNCTION dbo.fn_auditUserId()
+RETURNS INT
+AS
+BEGIN
+    DECLARE @userId INT;
+
+    SELECT @userId = id
+    FROM dbo.tbl_users
+    WHERE sqlLogin = ORIGINAL_LOGIN();
+
+    IF @userId IS NULL
+        SET @userId = TRY_CONVERT(INT, SESSION_CONTEXT(N'user_id'));
+
+    RETURN @userId;
+END;
+GO
+
+
+/*================ DISPARADORES DE AUDITORÍA ================*/
+
+/* ------------------------------------------------------------
+   dis01: dis_auditProducts
+   Tabla: tbl_products. Operaciones: INSERT, UPDATE, DELETE.
+
+   Une inserted y deleted con FULL OUTER JOIN por id, así procesa
+   todas las filas de la operación en una sola instrucción:
+   - Solo en inserted        -> INSERT (no hay valores anteriores)
+   - Solo en deleted         -> DELETE (no hay valores nuevos)
+   - En las dos tablas       -> UPDATE
+   En los UPDATE solo se registra la fila si cambió alguna columna
+   auditada; si solo cambió la descripción o la imagen, no se
+   registra nada.
+   ------------------------------------------------------------ */
+CREATE OR ALTER TRIGGER dbo.dis_auditProducts
+ON dbo.tbl_products
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM inserted)
+       AND NOT EXISTS (SELECT 1 FROM deleted)
+        RETURN;
+
+    DECLARE @userId INT = dbo.fn_auditUserId();
+
+    INSERT INTO dbo.tbl_auditProducts (
+        operation, product_id,
+        old_name, new_name,
+        old_category_id, new_category_id,
+        old_price, new_price,
+        old_stock, new_stock,
+        user_id
+    )
+    SELECT
+        CASE
+            WHEN d.id IS NULL THEN 'INSERT'
+            WHEN i.id IS NULL THEN 'DELETE'
+            ELSE 'UPDATE'
+        END,
+        COALESCE(i.id, d.id),
+        d.name, i.name,
+        d.category_id, i.category_id,
+        d.price, i.price,
+        d.stock, i.stock,
+        @userId
+    FROM inserted AS i
+    FULL OUTER JOIN deleted AS d
+        ON d.id = i.id
+    WHERE i.id IS NULL
+       OR d.id IS NULL
+       OR EXISTS (
+           SELECT i.name, i.category_id, i.price, i.stock
+           EXCEPT
+           SELECT d.name, d.category_id, d.price, d.stock
+       );
+END;
+GO
+
+/* ------------------------------------------------------------
+   dis02: dis_auditSales
+   Tabla: tbl_sales. Operaciones: INSERT, UPDATE, DELETE.
+
+   Misma lógica que dis01. Los valores se guardan como JSON con
+   FOR JSON PATH. Incluye los UPDATE del total que hace
+   dis_recalculateSaleTotal cuando cambian los detalles.
+   ------------------------------------------------------------ */
+CREATE OR ALTER TRIGGER dbo.dis_auditSales
+ON dbo.tbl_sales
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM inserted)
+       AND NOT EXISTS (SELECT 1 FROM deleted)
+        RETURN;
+
+    DECLARE @userId INT = dbo.fn_auditUserId();
+
+    INSERT INTO dbo.tbl_auditSales (
+        table_name, operation, record_id, sale_id,
+        old_values, new_values, user_id
+    )
+    SELECT
+        'tbl_sales',
+        CASE
+            WHEN d.id IS NULL THEN 'INSERT'
+            WHEN i.id IS NULL THEN 'DELETE'
+            ELSE 'UPDATE'
+        END,
+        COALESCE(i.id, d.id),
+        COALESCE(i.id, d.id),
+        CASE WHEN d.id IS NOT NULL THEN (
+            SELECT d.user_id, d.payment_method_id, d.total, d.sale_date
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+        ) END,
+        CASE WHEN i.id IS NOT NULL THEN (
+            SELECT i.user_id, i.payment_method_id, i.total, i.sale_date
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+        ) END,
+        @userId
+    FROM inserted AS i
+    FULL OUTER JOIN deleted AS d
+        ON d.id = i.id
+    WHERE i.id IS NULL
+       OR d.id IS NULL
+       OR EXISTS (
+           SELECT i.user_id, i.payment_method_id, i.total, i.sale_date
+           EXCEPT
+           SELECT d.user_id, d.payment_method_id, d.total, d.sale_date
+       );
+END;
+GO
+
+/* ------------------------------------------------------------
+   dis03: dis_auditSaleDetails
+   Tabla: tbl_saleDetails. Operaciones: INSERT, UPDATE, DELETE.
+
+   Registra qué productos y cantidades se agregan, cambian o
+   eliminan de una venta. Escribe en la misma tabla que dis02
+   (table_name = 'tbl_saleDetails'), así una venta completa se
+   consulta filtrando por sale_id.
+   ------------------------------------------------------------ */
+CREATE OR ALTER TRIGGER dbo.dis_auditSaleDetails
+ON dbo.tbl_saleDetails
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM inserted)
+       AND NOT EXISTS (SELECT 1 FROM deleted)
+        RETURN;
+
+    DECLARE @userId INT = dbo.fn_auditUserId();
+
+    INSERT INTO dbo.tbl_auditSales (
+        table_name, operation, record_id, sale_id,
+        old_values, new_values, user_id
+    )
+    SELECT
+        'tbl_saleDetails',
+        CASE
+            WHEN d.id IS NULL THEN 'INSERT'
+            WHEN i.id IS NULL THEN 'DELETE'
+            ELSE 'UPDATE'
+        END,
+        COALESCE(i.id, d.id),
+        COALESCE(i.sale_id, d.sale_id),
+        CASE WHEN d.id IS NOT NULL THEN (
+            SELECT d.sale_id, d.product_id, d.quantity, d.subtotal
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+        ) END,
+        CASE WHEN i.id IS NOT NULL THEN (
+            SELECT i.sale_id, i.product_id, i.quantity, i.subtotal
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+        ) END,
+        @userId
+    FROM inserted AS i
+    FULL OUTER JOIN deleted AS d
+        ON d.id = i.id
+    WHERE i.id IS NULL
+       OR d.id IS NULL
+       OR EXISTS (
+           SELECT i.sale_id, i.product_id, i.quantity, i.subtotal
+           EXCEPT
+           SELECT d.sale_id, d.product_id, d.quantity, d.subtotal
+       );
+END;
+GO
+
+
+/*================ PROCEDIMIENTO DE SESIONES ================*/
+
+/* ------------------------------------------------------------
+   pa_registrarSesion
+   Lo llama PHP con la conexión del propio usuario:
+   - controllers/Logincontroller.php -> UserModel   'LOGIN'
+   - views/logout.php                                'LOGOUT'
+   - config/auth_check.php (inactividad)             'EXPIRADA'
+   El usuario se obtiene de la conexión, no de un parámetro, así
+   nadie puede registrar una sesión a nombre de otra persona.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_registrarSesion
+    @event VARCHAR(10),
+    @clientIp VARCHAR(45) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @event IS NULL OR @event NOT IN ('LOGIN', 'LOGOUT', 'EXPIRADA')
+        THROW 51400, 'Evento de sesión inválido.', 1;
+
+    INSERT INTO dbo.tbl_auditSessions (event, user_id, client_ip)
+    VALUES (@event, dbo.fn_auditUserId(), @clientIp);
+END;
+GO
+
+
+/*================ PERMISOS SOBRE LA AUDITORÍA ================*/
+
+/* Nadie puede escribir, modificar ni borrar la auditoría
+   directamente, ni siquiera el administrador. Los triggers y
+   pa_registrarSesion sí pueden insertar porque pertenecen al
+   mismo dueño (dbo) que las tablas (encadenamiento de propiedad).
+   Solo el administrador puede consultarla. */
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_auditProducts TO rolAdmin, rolEmpleado, rolCliente;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_auditSales    TO rolAdmin, rolEmpleado, rolCliente;
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_auditSessions TO rolAdmin, rolEmpleado, rolCliente;
+
+DENY SELECT ON dbo.tbl_auditProducts TO rolEmpleado, rolCliente;
+DENY SELECT ON dbo.tbl_auditSales    TO rolEmpleado, rolCliente;
+DENY SELECT ON dbo.tbl_auditSessions TO rolEmpleado, rolCliente;
+
+GRANT EXECUTE ON dbo.pa_registrarSesion TO rolAdmin, rolEmpleado, rolCliente;
+GO
+
+
+/* ============================================================
+   COMPROBACIÓN DE LA AUDITORÍA
+
+   Pruebas de INSERT, UPDATE y DELETE con varias filas a la vez.
+   Al terminar, los datos de prueba se eliminan y solo quedan los
+   registros de auditoría como evidencia.
+
+   Desde SSMS la conexión usa Windows Authentication, que no es un
+   usuario de la aplicación; por eso se simula al usuario 1
+   (2AC Team) con SESSION_CONTEXT, igual que hace la aplicación.
+   ============================================================ */
+
+EXEC sys.sp_set_session_context @key = N'user_id', @value = 1;
+GO
+
+-- Productos: INSERT de 2 filas, UPDATE de 2 filas, DELETE de 2 filas.
+INSERT INTO dbo.tbl_products (category_id, name, description, price, stock)
+VALUES
+    (2, 'Prueba auditoría A', NULL, 10000.00, 20),
+    (2, 'Prueba auditoría B', NULL, 12000.00, 30);
+
+UPDATE dbo.tbl_products
+SET price = price + 1000.00
+WHERE name LIKE 'Prueba auditoría%';
+GO
+
+-- Ventas: una venta con 2 detalles, se modifica y se elimina.
+DECLARE @productA INT = (SELECT id FROM dbo.tbl_products WHERE name = 'Prueba auditoría A');
+DECLARE @productB INT = (SELECT id FROM dbo.tbl_products WHERE name = 'Prueba auditoría B');
+DECLARE @saleId INT;
+
+INSERT INTO dbo.tbl_sales (user_id, payment_method_id, total)
+VALUES (1, 1, 0);
+
+SET @saleId = SCOPE_IDENTITY();
+
+INSERT INTO dbo.tbl_saleDetails (sale_id, product_id, quantity, subtotal)
+VALUES
+    (@saleId, @productA, 2, 22000.00),
+    (@saleId, @productB, 1, 13000.00);
+
+UPDATE dbo.tbl_saleDetails
+SET quantity = 3, subtotal = 33000.00
+WHERE sale_id = @saleId AND product_id = @productA;
+
+UPDATE dbo.tbl_sales
+SET payment_method_id = 2
+WHERE id = @saleId;
+
+DELETE FROM dbo.tbl_saleDetails WHERE sale_id = @saleId;
+DELETE FROM dbo.tbl_sales WHERE id = @saleId;
+GO
+
+DELETE FROM dbo.tbl_products
+WHERE name LIKE 'Prueba auditoría%';
+GO
+
+-- Sesiones: inicio y cierre de sesión.
+EXEC dbo.pa_registrarSesion @event = 'LOGIN', @clientIp = '127.0.0.1';
+EXEC dbo.pa_registrarSesion @event = 'LOGOUT', @clientIp = '127.0.0.1';
+GO
+
+EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+GO
+
+-- Evidencia: lo que registró cada tabla de auditoría.
+SELECT a.id, a.operation, a.product_id,
+       a.old_name, a.new_name,
+       a.old_price, a.new_price,
+       a.old_stock, a.new_stock,
+       u.name AS usuario, a.login_name, a.action_date
+FROM dbo.tbl_auditProducts AS a
+LEFT JOIN dbo.tbl_users AS u ON u.id = a.user_id
+ORDER BY a.id;
+
+SELECT a.id, a.table_name, a.operation, a.record_id, a.sale_id,
+       a.old_values, a.new_values,
+       u.name AS usuario, a.login_name, a.action_date
+FROM dbo.tbl_auditSales AS a
+LEFT JOIN dbo.tbl_users AS u ON u.id = a.user_id
+ORDER BY a.id;
+
+SELECT a.id, a.event, u.name AS usuario,
+       a.login_name, a.client_ip, a.event_date
+FROM dbo.tbl_auditSessions AS a
+LEFT JOIN dbo.tbl_users AS u ON u.id = a.user_id
+ORDER BY a.id;
 GO
