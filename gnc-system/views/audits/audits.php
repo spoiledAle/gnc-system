@@ -1,11 +1,11 @@
 <?php
-
 session_start();
 
 $inactive = 300;
 
 if (isset($_SESSION['timeout'])) {
     $sessionLife = time() - $_SESSION['timeout'];
+
     if ($sessionLife > $inactive) {
         session_unset();
         session_destroy();
@@ -13,23 +13,25 @@ if (isset($_SESSION['timeout'])) {
         exit();
     }
 }
+
 $_SESSION['timeout'] = time();
 
-if(!isset($_SESSION['user'])) {
+if (!isset($_SESSION['user'])) {
     header("Location: ../login.php");
     exit();
 }
 
 include_once '../../config/database.php';
 
-$sql = "SELECT a.*, u.name AS user_name
-        FROM tbl_auditLogs a
-        LEFT JOIN tbl_users u ON a.user_id = u.id
-        ORDER BY a.action_date DESC";
+$sql = "SELECT id, action_type, product_name, action_date
+        FROM dbo.tbl_auditLogs
+        ORDER BY action_date DESC, id DESC";
 
 $result = $conn->query($sql);
-$numero = $conn->query("SELECT COUNT(*) FROM tbl_auditLogs")->fetchColumn();
 
+$numero = (int) $conn
+    ->query("SELECT COUNT(*) FROM dbo.tbl_auditLogs")
+    ->fetchColumn();
 ?>
 
 <!DOCTYPE html>
@@ -44,11 +46,18 @@ $numero = $conn->query("SELECT COUNT(*) FROM tbl_auditLogs")->fetchColumn();
 
 <body>
 
-    <?php $currentPage = 'audits'; $basePath = '../'; include __DIR__ . '/../partials/navbar.php'; ?>
+    <?php
+    $currentPage = 'audits';
+    $basePath = '../';
+    include __DIR__ . '/../partials/navbar.php';
+    ?>
 
     <div class="container">
         <h1 class="title">Auditorías del Sistema</h1>
-        <p class="subtitle">Registro automático de acciones realizadas sobre productos del inventario.</p>
+
+        <p class="subtitle">
+            Registro automático de acciones realizadas sobre productos del inventario.
+        </p>
 
         <div class="page-actions">
             <a href="../home.php" class="btn btn-secondary">← Volver</a>
@@ -56,31 +65,69 @@ $numero = $conn->query("SELECT COUNT(*) FROM tbl_auditLogs")->fetchColumn();
 
         <div class="table-responsive">
             <table>
-                <tr>
-                    <th style="width: 70px;">No.</th>
-                    <th>Acción</th>
-                    <th>Producto</th>
-                    <th>Usuario</th>
-                    <th>Fecha</th>
-                </tr>
-
-                <?php while($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
+                <thead>
                     <tr>
-                        <td><?php echo $numero--; ?></td>
-                        <td>
-                            <span class="badge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #e0e7ff; color: #3730a3;">
-                                <?php echo htmlspecialchars($row['action_type']); ?>
-                            </span>
-                        </td>
-                        <td><?php echo htmlspecialchars($row['product_name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['user_name'] ?? 'Desconocido'); ?></td>
-                        <td><?php echo $row['action_date']; ?></td>
+                        <th style="width: 70px;">No.</th>
+                        <th>Acción</th>
+                        <th>Producto</th>
+                        <th>Fecha</th>
                     </tr>
-                <?php } ?>
+                </thead>
+
+                <tbody>
+                    <?php if ($numero === 0) { ?>
+                        <tr>
+                            <td colspan="4">No hay auditorías registradas.</td>
+                        </tr>
+                    <?php } ?>
+
+                    <?php while ($row = $result->fetch(PDO::FETCH_ASSOC)) { ?>
+                        <tr>
+                            <td><?php echo $numero--; ?></td>
+
+                            <td>
+                                <span class="badge"
+                                      style="padding: 4px 8px;
+                                             border-radius: 4px;
+                                             font-size: 12px;
+                                             font-weight: 600;
+                                             background: #e0e7ff;
+                                             color: #3730a3;">
+                                    <?php
+                                    echo htmlspecialchars(
+                                        $row['action_type'] ?? '',
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    );
+                                    ?>
+                                </span>
+                            </td>
+
+                            <td>
+                                <?php
+                                echo htmlspecialchars(
+                                    $row['product_name'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+                            </td>
+
+                            <td>
+                                <?php
+                                echo htmlspecialchars(
+                                    $row['action_date'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                                ?>
+                            </td>
+                        </tr>
+                    <?php } ?>
+                </tbody>
             </table>
         </div>
     </div>
 
 </body>
-
 </html>
