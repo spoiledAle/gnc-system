@@ -18,7 +18,11 @@ class UserModel
         try {
             $connection = connectSqlServer($username, $password);
 
-            return getGncProfile($connection);
+            $profile = getGncProfile($connection);
+
+            registerGncSessionEvent($connection, 'LOGIN');
+
+            return $profile;
         } catch (PDOException $exception) {
             // Diagnóstico temporal: aparece en la terminal de PHP.
             // No se imprime en la página ni se registra la contraseña.

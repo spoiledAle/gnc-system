@@ -68,17 +68,21 @@ class SaleModel {
 
         global $conn;
 
-        $sql = "INSERT INTO tbl_sales (
+        // SCOPE_IDENTITY() y no lastInsertId(): pdo_sqlsrv usa @@IDENTITY,
+        // que devolvería el id que inserta el trigger de auditoría.
+        $sql = "SET NOCOUNT ON;
+        INSERT INTO tbl_sales (
             user_id,
             payment_method_id,
             total,
             sale_date
-        ) VALUES (?, ?, ?, GETDATE())";
+        ) VALUES (?, ?, ?, GETDATE());
+        SELECT CAST(SCOPE_IDENTITY() AS INT) AS id;";
 
         $stmt = $conn->prepare($sql);
 
         if ($stmt->execute([$user_id, $payment_method_id, $total])) {
-            return $conn->lastInsertId();
+            return $stmt->fetchColumn();
         }
 
         return false;

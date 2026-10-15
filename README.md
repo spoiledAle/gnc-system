@@ -47,7 +47,7 @@ Al ejecutarlo completo en SSMS se crea la base `gncproyecto` con:
 
 | Prefijo | Contenido                  | Ejemplos                                                |
 | ------- | -------------------------- | ------------------------------------------------------- |
-| `tbl_`  | Tablas                     | `tbl_products`, `tbl_sales`, `tbl_auditLogs`            |
+| `tbl_`  | Tablas                     | `tbl_products`, `tbl_sales`, `tbl_auditProducts`        |
 | `pa_`   | Procedimientos almacenados | `pa_insertarProducto`, `pa_filtrarProductos`            |
 | `v_`    | Vistas                     | `v_historialVentas`, `v_inventarioProductos`            |
 | `dis_`  | Disparadores (triggers)    | `dis_decreaseStockAfterSale`, `dis_auditUpdateProduct`  |
