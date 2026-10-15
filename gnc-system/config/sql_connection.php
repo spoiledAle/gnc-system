@@ -34,6 +34,52 @@ function connectSqlServer(
     ]);
 }
 
+// Registra LOGIN, LOGOUT o EXPIRADA en tbl_auditSessions. SQL Server
+// toma el usuario de la conexión; si falla, no se bloquea al usuario.
+function registerGncSessionEvent(PDO $connection, string $event): void
+{
+    try {
+        $statement = $connection->prepare(
+            'EXEC dbo.pa_registrarSesion @event = ?, @clientIp = ?'
+        );
+
+        $statement->execute([$event, $_SERVER['REMOTE_ADDR'] ?? null]);
+        $statement->closeCursor();
+    } catch (PDOException $exception) {
+        error_log(
+            'GNC: no se pudo auditar la sesión (' . $event . ').'
+        );
+    }
+}
+
+// Abre una conexión con las credenciales guardadas en la sesión solo
+// para auditar el cierre o la expiración, antes de borrar la sesión.
+function registerGncSessionEventFromSession(string $event): void
+{
+    $credentials = $_SESSION['dbCredentials'] ?? null;
+
+    if (
+        !is_array($credentials)
+        || !is_string($credentials['username'] ?? null)
+        || !is_string($credentials['password'] ?? null)
+    ) {
+        return;
+    }
+
+    try {
+        $connection = connectSqlServer(
+            $credentials['username'],
+            $credentials['password']
+        );
+
+        registerGncSessionEvent($connection, $event);
+    } catch (PDOException $exception) {
+        error_log(
+            'GNC: no se pudo auditar la sesión (' . $event . ').'
+        );
+    }
+}
+
 function getGncProfile(PDO $connection): array
 {
     $statement = $connection->query('EXEC dbo.pa_validarCuenta');

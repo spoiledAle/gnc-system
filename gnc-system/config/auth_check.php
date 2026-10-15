@@ -51,6 +51,7 @@ function requireLogin(): void
     }
 
     if (time() - (int) $_SESSION['timeout'] >= 300) {
+        registerGncSessionEventFromSession('EXPIRADA');
         redirectToGncLogin('?expired=1');
     }
 }
