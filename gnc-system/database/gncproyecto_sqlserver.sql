@@ -2675,3 +2675,411 @@ FROM dbo.tbl_auditSessions AS a
 LEFT JOIN dbo.tbl_users AS u ON u.id = a.user_id
 ORDER BY a.id;
 GO
+
+
+/* ============================================================
+   RESPALDO Y RESTAURACIÓN
+
+   Objetivo:
+   Permitir que el administrador haga respaldos completos de
+   gncproyecto, compruebe que el archivo no esté dañado y pruebe
+   la recuperación restaurándolo en una base aparte
+   (gncproyecto_prueba), sin tocar nunca la base real.
+
+   Procedimientos:
+   - pa_respaldoCompleto   BACKUP DATABASE con CHECKSUM
+   - pa_verificarRespaldo  RESTORE VERIFYONLY
+   - pa_restaurarRespaldo  RESTORE en gncproyecto_prueba
+   - pa_listarRespaldos    historial para la pantalla
+
+   Archivos:
+   Se guardan en la carpeta de respaldos de la instancia
+   (SERVERPROPERTY('InstanceDefaultBackupPath')). Los
+   procedimientos solo reciben el nombre del archivo, nunca una
+   ruta, y solo aceptan archivos creados por pa_respaldoCompleto.
+
+   Permisos:
+   Los usuarios de la aplicación no pueden respaldar ni restaurar.
+   Los procedimientos se firman con certGncAccounts (el mismo
+   certificado de la gestión de cuentas):
+   - userGncAccountsCertificate (en gncproyecto) es miembro de
+     db_backupoperator, para poder hacer BACKUP DATABASE.
+   - loginGncAccountsCertificate (en master) es miembro de
+     dbcreator, para poder verificar y restaurar.
+   Solo rolAdmin puede ejecutarlos, y la restauración siempre va a
+   gncproyecto_prueba porque ese nombre está fijo en el código.
+   ============================================================ */
+
+USE gncproyecto;
+GO
+
+
+/*================ TABLA DE HISTORIAL ================*/
+
+/* ------------------------------------------------------------
+   tbl_backupHistory
+   Registra cada respaldo, verificación y restauración, con su
+   resultado. Solo se crea si no existe, para no perder el
+   historial al volver a ejecutar esta sección.
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.tbl_backupHistory', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.tbl_backupHistory (
+        id               INT IDENTITY(1,1) NOT NULL,
+        operation        VARCHAR(10)     NOT NULL,
+        file_name        NVARCHAR(200)   NOT NULL,
+        target_database  SYSNAME         NOT NULL,
+        status           VARCHAR(8)      NOT NULL,
+        message          NVARCHAR(4000)  NULL,
+        user_id          INT             NULL,
+        login_name       NVARCHAR(128)   NOT NULL
+            CONSTRAINT DF_backup_history_login DEFAULT ORIGINAL_LOGIN(),
+        action_date      DATETIME2(0)    NOT NULL
+            CONSTRAINT DF_backup_history_date DEFAULT SYSDATETIME(),
+        CONSTRAINT PK_backup_history PRIMARY KEY (id),
+        CONSTRAINT CK_backup_history_operation
+            CHECK (operation IN ('RESPALDO', 'VERIFICAR', 'RESTAURAR')),
+        CONSTRAINT CK_backup_history_status
+            CHECK (status IN ('EXITOSO', 'FALLIDO'))
+    );
+END;
+GO
+
+
+/*================ FUNCIÓN DE APOYO ================*/
+
+/* ------------------------------------------------------------
+   fn_rutaRespaldo
+   Devuelve la ruta completa de un archivo dentro de la carpeta de
+   respaldos de la instancia.
+   ------------------------------------------------------------ */
+CREATE OR ALTER FUNCTION dbo.fn_rutaRespaldo (@fileName NVARCHAR(200))
+RETURNS NVARCHAR(1000)
+AS
+BEGIN
+    DECLARE @folder NVARCHAR(800) =
+        CONVERT(NVARCHAR(800), SERVERPROPERTY('InstanceDefaultBackupPath'));
+
+    IF RIGHT(@folder, 1) <> N'\'
+        SET @folder += N'\';
+
+    RETURN @folder + @fileName;
+END;
+GO
+
+
+/*================ PROCEDIMIENTOS ================*/
+
+/* ------------------------------------------------------------
+   pa_respaldoCompleto
+   Hace un respaldo completo de gncproyecto en un archivo nuevo,
+   llamado gncproyecto_AAAAMMDD_HHMMSS.bak.
+   - CHECKSUM: SQL Server valida cada página al respaldar.
+   - COPY_ONLY: no altera la cadena de respaldos de la instancia,
+     por si el servidor tiene su propio plan de respaldos.
+   Devuelve el nombre del archivo creado.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_respaldoCompleto
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede hacer respaldos.', 1;
+
+    DECLARE @fileName NVARCHAR(200) =
+        N'gncproyecto_' + FORMAT(SYSDATETIME(), 'yyyyMMdd_HHmmss') + N'.bak';
+    DECLARE @path NVARCHAR(1000) = dbo.fn_rutaRespaldo(@fileName);
+
+    BEGIN TRY
+        BACKUP DATABASE gncproyecto
+        TO DISK = @path
+        WITH COPY_ONLY, INIT, CHECKSUM,
+             NAME = N'gncproyecto - respaldo completo';
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESPALDO', @fileName, N'gncproyecto', 'EXITOSO',
+             N'Respaldo completo creado.', dbo.fn_auditUserId());
+
+        SELECT @fileName AS file_name;
+    END TRY
+    BEGIN CATCH
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESPALDO', @fileName, N'gncproyecto', 'FALLIDO',
+             ERROR_MESSAGE(), dbo.fn_auditUserId());
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+/* ------------------------------------------------------------
+   pa_verificarRespaldo
+   Comprueba que un respaldo se pueda leer completo y que sus
+   CHECKSUM sean correctos, sin restaurarlo.
+   Solo acepta archivos que pa_respaldoCompleto creó con éxito.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_verificarRespaldo
+    @fileName NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede verificar respaldos.', 1;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.tbl_backupHistory
+        WHERE operation = 'RESPALDO'
+          AND status = 'EXITOSO'
+          AND file_name = @fileName
+    )
+        THROW 51501, 'El respaldo indicado no existe.', 1;
+
+    DECLARE @path NVARCHAR(1000) = dbo.fn_rutaRespaldo(@fileName);
+
+    BEGIN TRY
+        RESTORE VERIFYONLY
+        FROM DISK = @path
+        WITH CHECKSUM;
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('VERIFICAR', @fileName, N'gncproyecto', 'EXITOSO',
+             N'El respaldo es válido.', dbo.fn_auditUserId());
+
+        SELECT N'El respaldo es válido.' AS message;
+    END TRY
+    BEGIN CATCH
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('VERIFICAR', @fileName, N'gncproyecto', 'FALLIDO',
+             ERROR_MESSAGE(), dbo.fn_auditUserId());
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+/* ------------------------------------------------------------
+   pa_restaurarRespaldo
+   Restaura un respaldo en gncproyecto_prueba para comprobar que
+   la recuperación funciona. La base real nunca se modifica: el
+   nombre de la base destino está fijo en el código.
+   - Si gncproyecto_prueba ya existe, se desconecta a quien la
+     esté usando y se reemplaza.
+   - Los archivos se crean en las carpetas de datos y de log de la
+     instancia (MOVE), para no chocar con los de gncproyecto.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_restaurarRespaldo
+    @fileName NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede restaurar respaldos.', 1;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.tbl_backupHistory
+        WHERE operation = 'RESPALDO'
+          AND status = 'EXITOSO'
+          AND file_name = @fileName
+    )
+        THROW 51501, 'El respaldo indicado no existe.', 1;
+
+    DECLARE @path NVARCHAR(1000) = dbo.fn_rutaRespaldo(@fileName);
+
+    -- Nombres lógicos de los archivos de gncproyecto (son los mismos
+    -- que tiene el respaldo).
+    DECLARE @dataName SYSNAME = (
+        SELECT TOP 1 name FROM sys.database_files WHERE type_desc = 'ROWS'
+    );
+    DECLARE @logName SYSNAME = (
+        SELECT TOP 1 name FROM sys.database_files WHERE type_desc = 'LOG'
+    );
+
+    DECLARE @dataFolder NVARCHAR(800) =
+        CONVERT(NVARCHAR(800), SERVERPROPERTY('InstanceDefaultDataPath'));
+    DECLARE @logFolder NVARCHAR(800) =
+        CONVERT(NVARCHAR(800), SERVERPROPERTY('InstanceDefaultLogPath'));
+
+    IF RIGHT(@dataFolder, 1) <> N'\' SET @dataFolder += N'\';
+    IF RIGHT(@logFolder, 1) <> N'\' SET @logFolder += N'\';
+
+    DECLARE @dataFile NVARCHAR(1000) = @dataFolder + N'gncproyecto_prueba.mdf';
+    DECLARE @logFile NVARCHAR(1000) = @logFolder + N'gncproyecto_prueba_log.ldf';
+
+    BEGIN TRY
+        IF DB_ID(N'gncproyecto_prueba') IS NOT NULL
+            ALTER DATABASE gncproyecto_prueba
+            SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+        RESTORE DATABASE gncproyecto_prueba
+        FROM DISK = @path
+        WITH MOVE @dataName TO @dataFile,
+             MOVE @logName TO @logFile,
+             REPLACE, CHECKSUM, RECOVERY;
+
+        IF DATABASEPROPERTYEX(N'gncproyecto_prueba', 'Status') <> 'ONLINE'
+            THROW 51502, 'La base de prueba no quedó en línea.', 1;
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESTAURAR', @fileName, N'gncproyecto_prueba', 'EXITOSO',
+             N'Respaldo restaurado en gncproyecto_prueba.', dbo.fn_auditUserId());
+
+        SELECT N'Respaldo restaurado en gncproyecto_prueba.' AS message;
+    END TRY
+    BEGIN CATCH
+        -- Si la restauración falló, la base de prueba no debe quedar
+        -- bloqueada en modo de un solo usuario.
+        IF DB_ID(N'gncproyecto_prueba') IS NOT NULL
+           AND DATABASEPROPERTYEX(N'gncproyecto_prueba', 'Status') = 'ONLINE'
+            ALTER DATABASE gncproyecto_prueba SET MULTI_USER;
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESTAURAR', @fileName, N'gncproyecto_prueba', 'FALLIDO',
+             ERROR_MESSAGE(), dbo.fn_auditUserId());
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+/* ------------------------------------------------------------
+   pa_listarRespaldos
+   Historial de respaldos, verificaciones y restauraciones, del
+   más reciente al más antiguo.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_listarRespaldos
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede ver los respaldos.', 1;
+
+    SELECT TOP 100
+        h.id,
+        h.operation,
+        h.file_name,
+        h.target_database,
+        h.status,
+        h.message,
+        COALESCE(u.name, h.login_name) AS user_name,
+        h.action_date
+    FROM dbo.tbl_backupHistory AS h
+    LEFT JOIN dbo.tbl_users AS u
+        ON u.id = h.user_id
+    ORDER BY h.id DESC;
+END;
+GO
+
+
+/*================ PERMISOS ================*/
+
+-- El usuario del certificado puede respaldar gncproyecto.
+IF IS_ROLEMEMBER(N'db_backupoperator', N'userGncAccountsCertificate') <> 1
+    ALTER ROLE db_backupoperator ADD MEMBER userGncAccountsCertificate;
+GO
+
+-- El login del certificado puede verificar y restaurar
+-- (RESTORE necesita permisos de servidor).
+USE master;
+GO
+IF IS_SRVROLEMEMBER(N'dbcreator', N'loginGncAccountsCertificate') <> 1
+    ALTER SERVER ROLE dbcreator ADD MEMBER loginGncAccountsCertificate;
+GO
+USE gncproyecto;
+GO
+
+-- CREATE OR ALTER borra la firma, así que se firma después de crear.
+ADD SIGNATURE TO OBJECT::dbo.pa_respaldoCompleto
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_verificarRespaldo
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_restaurarRespaldo
+BY CERTIFICATE certGncAccounts
+WITH PASSWORD = 'tammy';
+GO
+
+-- Nadie modifica el historial directamente; solo los procedimientos
+-- escriben en él.
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_backupHistory TO rolAdmin, rolEmpleado, rolCliente;
+DENY SELECT ON dbo.tbl_backupHistory TO rolEmpleado, rolCliente;
+
+GRANT EXECUTE ON dbo.pa_respaldoCompleto  TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_verificarRespaldo TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_restaurarRespaldo TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_listarRespaldos   TO rolAdmin;
+GO
+
+
+/* ============================================================
+   COMPROBACIÓN DEL RESPALDO Y LA RESTAURACIÓN
+
+   1. Se crea un respaldo completo.
+   2. Se verifica el archivo.
+   3. Se restaura en gncproyecto_prueba.
+   4. Se compara la cantidad de filas de las tablas principales
+      entre la base real y la de prueba: deben ser iguales.
+   ============================================================ */
+
+-- No se usa INSERT ... EXEC para leer el nombre del archivo porque
+-- abre una transacción, y BACKUP no se permite dentro de una.
+EXEC dbo.pa_respaldoCompleto;
+GO
+
+DECLARE @fileName NVARCHAR(200) = (
+    SELECT TOP 1 file_name
+    FROM dbo.tbl_backupHistory
+    WHERE operation = 'RESPALDO' AND status = 'EXITOSO'
+    ORDER BY id DESC
+);
+
+EXEC dbo.pa_verificarRespaldo @fileName = @fileName;
+EXEC dbo.pa_restaurarRespaldo @fileName = @fileName;
+GO
+
+-- Comparación entre la base real y la restaurada.
+SELECT t.tabla, t.filas_original, t.filas_prueba,
+       CASE WHEN t.filas_original = t.filas_prueba
+            THEN 'IGUAL' ELSE 'DIFERENTE' END AS resultado
+FROM (
+    SELECT 'tbl_products', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_products),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_products)
+    UNION ALL
+    SELECT 'tbl_sales', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_sales),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_sales)
+    UNION ALL
+    SELECT 'tbl_saleDetails', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_saleDetails),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_saleDetails)
+    UNION ALL
+    SELECT 'tbl_users', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_users),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_users)
+) AS t (tabla, filas_original, filas_prueba);
+
+EXEC dbo.pa_listarRespaldos;
+GO
