@@ -11,6 +11,20 @@ function gncDatabaseSettings(): array
         include $localConfig;
     }
 
+    // En Docker o en el hosting, el servidor y la base vienen de variables
+    // de entorno. El usuario y la contraseña no: cada persona entra con su
+    // propio login de SQL Server (de eso dependen los roles y la auditoría).
+    $serverFromEnv = getenv('DB_SERVER');
+    $databaseFromEnv = getenv('DB_NAME');
+
+    if (is_string($serverFromEnv) && $serverFromEnv !== '') {
+        $host = $serverFromEnv;
+    }
+
+    if (is_string($databaseFromEnv) && $databaseFromEnv !== '') {
+        $database = $databaseFromEnv;
+    }
+
     return [
         'host' => $host,
         'database' => $database,
