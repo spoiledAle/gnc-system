@@ -93,11 +93,40 @@ Alternativa: simplemente clona/copia el proyecto directo dentro de
 2. Asegúrate de que el servicio de SQL Server esté corriendo.
 3. Abre `http://localhost/gnc-system/views/login.php`.
 
-Usuario de prueba que ya está cargado (solo para desarrollo local):
+Se entra con el nombre del login de SQL Server, no con el correo:
 
-| Email | Contraseña |
+| Usuario | Rol |
 |---|---|
-| 2acteam@gmail.com | 2ac |
+| `gnc_admin` | Administrador |
+| `gnc_empleado` | Empleado |
+| `gnc_cliente` | Cliente |
+
+El script no trae contraseñas escritas. La primera vez que se ejecuta,
+crea cada login con una contraseña aleatoria y la muestra **una sola
+vez** en la pestaña **Messages** de SSMS (líneas `Login ... creado.
+Contraseña: ...`). Guárdalas en un gestor de contraseñas; no las subas
+al repositorio.
+
+Si los logins ya existían, el script no les cambia la contraseña. Para
+cambiarla (o si se perdió), ejecuta en SSMS:
+
+```sql
+ALTER LOGIN gnc_admin WITH PASSWORD = '<nueva contraseña>';
+```
+
+### Registro de clientes
+
+La página de registro usa la cuenta técnica `gnc_registro`. Pon la
+contraseña que mostró el script en `config/database.local.php`:
+
+```php
+$registrationUser = 'gnc_registro';
+$registrationPassword = '<contraseña que mostró el script>';
+```
+
+En Docker o en un hosting usa variables de entorno en lugar del archivo:
+`DB_SERVER`, `DB_NAME`, `DB_REGISTRATION_USER` y
+`DB_REGISTRATION_PASSWORD`.
 
 ## Problemas comunes
 

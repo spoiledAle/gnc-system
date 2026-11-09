@@ -1,0 +1,9 @@
+# Configuración local con credenciales: nunca dentro de la imagen.
+config/database.local.php
+
+# No los necesita la aplicación en ejecución.
+database/
+tests/
+SETUP.md
+Dockerfile
+.dockerignore

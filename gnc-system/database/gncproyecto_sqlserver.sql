@@ -167,7 +167,7 @@ GO
 -- users
 SET IDENTITY_INSERT dbo.tbl_users ON;
 INSERT INTO dbo.tbl_users (id, name, email, password) VALUES
-    (1, N'2AC Team', N'2acteam@gmail.com', N'2ac');
+    (1, N'2AC Team', N'2acteam@gmail.com', N'SIN_ACCESO');
 SET IDENTITY_INSERT dbo.tbl_users OFF;
 GO
 
@@ -1418,31 +1418,33 @@ GO
    ============================================================ */
 USE master;
 GO
--- Si la política de Windows rechaza esta clave de demostración,
--- reemplázala por una contraseña que cumpla dicha política.
-IF SUSER_ID(N'gnc_admin') IS NULL
+/* Las contraseñas no se escriben en este script. Cuando un login no
+   existe, se crea con una contraseña aleatoria que se muestra UNA
+   sola vez en la pestaña Messages de SSMS: guárdala en un lugar
+   seguro. Si el login ya existe, no se modifica.
+   Para cambiarla después:
+   ALTER LOGIN gnc_admin WITH PASSWORD = '<nueva contraseña>'; */
+DECLARE @logins TABLE (login_name SYSNAME PRIMARY KEY);
+INSERT INTO @logins VALUES (N'gnc_admin'), (N'gnc_empleado'), (N'gnc_cliente');
+
+DECLARE @login SYSNAME, @password NVARCHAR(128);
+
+WHILE EXISTS (SELECT 1 FROM @logins)
 BEGIN
-    CREATE LOGIN gnc_admin
-    WITH PASSWORD = 'admin123', CHECK_POLICY = ON,
-         DEFAULT_DATABASE = gncproyecto;
-END;
-GO
--- Si la política de Windows rechaza esta clave de demostración,
--- reemplázala por una contraseña que cumpla dicha política.
-IF SUSER_ID(N'gnc_empleado') IS NULL
-BEGIN
-    CREATE LOGIN gnc_empleado
-    WITH PASSWORD = 'empleado123', CHECK_POLICY = ON,
-         DEFAULT_DATABASE = gncproyecto;
-END;
-GO
--- Si la política de Windows rechaza esta clave de demostración,
--- reemplázala por una contraseña que cumpla dicha política.
-IF SUSER_ID(N'gnc_cliente') IS NULL
-BEGIN
-    CREATE LOGIN gnc_cliente
-    WITH PASSWORD = 'cliente123', CHECK_POLICY = ON,
-         DEFAULT_DATABASE = gncproyecto;
+    SELECT TOP 1 @login = login_name FROM @logins ORDER BY login_name;
+    DELETE FROM @logins WHERE login_name = @login;
+
+    IF SUSER_ID(@login) IS NULL
+    BEGIN
+        SET @password = N'Gnc!' + CONVERT(NVARCHAR(64), CRYPT_GEN_RANDOM(16), 2) + N'a';
+
+        EXEC (N'CREATE LOGIN ' + QUOTENAME(@login)
+            + N' WITH PASSWORD = N''' + @password + N''''
+            + N', CHECK_POLICY = ON, DEFAULT_DATABASE = gncproyecto;');
+
+        PRINT N'Login ' + @login + N' creado. Contraseña: ' + @password
+            + N'  (guárdala, no se vuelve a mostrar)';
+    END;
 END;
 GO
 USE gncproyecto;
@@ -1525,23 +1527,33 @@ BEGIN
     ON dbo.tbl_users(sqlLogin) WHERE sqlLogin IS NOT NULL;
 END;
 GO
+/* La contraseña real la valida SQL Server con el login; tbl_users no
+   guarda contraseñas de los usuarios con login SQL. */
 IF NOT EXISTS (SELECT 1 FROM dbo.tbl_users WHERE sqlLogin = N'gnc_admin')
 BEGIN
     INSERT INTO dbo.tbl_users (name, email, password, sqlLogin)
-    VALUES ('Administrador', 'admin@gnc.com', 'admin123', N'gnc_admin');
+    VALUES ('Administrador', 'admin@gnc.com', 'AUTENTICACION_SQL_SERVER', N'gnc_admin');
 END;
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.tbl_users WHERE sqlLogin = N'gnc_empleado')
 BEGIN
     INSERT INTO dbo.tbl_users (name, email, password, sqlLogin)
-    VALUES ('Empleado', 'empleado@gnc.com', 'empleado123', N'gnc_empleado');
+    VALUES ('Empleado', 'empleado@gnc.com', 'AUTENTICACION_SQL_SERVER', N'gnc_empleado');
 END;
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.tbl_users WHERE sqlLogin = N'gnc_cliente')
 BEGIN
     INSERT INTO dbo.tbl_users (name, email, password, sqlLogin)
-    VALUES ('Cliente', 'cliente@gnc.com', 'cliente123', N'gnc_cliente');
+    VALUES ('Cliente', 'cliente@gnc.com', 'AUTENTICACION_SQL_SERVER', N'gnc_cliente');
 END;
+GO
+-- Limpia contraseñas en texto plano que hayan quedado de versiones
+-- anteriores. Se conservan los hashes bcrypt ($2y$...).
+UPDATE dbo.tbl_users
+SET password = CASE WHEN sqlLogin IS NULL THEN 'SIN_ACCESO'
+                    ELSE 'AUTENTICACION_SQL_SERVER' END
+WHERE password NOT LIKE '$2y$%'
+  AND password NOT IN ('AUTENTICACION_SQL_SERVER', 'SIN_ACCESO');
 GO
 CREATE OR ALTER VIEW dbo.vw_appIdentity
 AS
@@ -1780,10 +1792,67 @@ GO
 
    ============================================================ */
 
+/* La clave privada del certificado se protege con la master key de
+   la base, que SQL Server abre automáticamente con la clave de servicio
+   de la instancia. Así se puede firmar sin escribir ninguna contraseña
+   en este script. */
+
+-- 1. Master key de la base, con una contraseña aleatoria que nunca se
+--    vuelve a necesitar.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.symmetric_keys
+    WHERE name = N'##MS_DatabaseMasterKey##'
+)
+BEGIN
+    DECLARE @masterKeyPassword NVARCHAR(128) =
+        N'Gnc!' + CONVERT(NVARCHAR(64), CRYPT_GEN_RANDOM(32), 2) + N'a';
+
+    EXEC (N'CREATE MASTER KEY ENCRYPTION BY PASSWORD = N'''
+        + @masterKeyPassword + N''';');
+END;
+GO
+
+-- 2. Las versiones anteriores protegían el certificado con una
+--    contraseña escrita en el script. Si existe uno así, se reemplaza:
+--    se quitan sus firmas, su usuario y su copia en master, y en el
+--    paso 3 se crea uno nuevo. Más abajo se vuelve a firmar todo.
+IF EXISTS (
+    SELECT 1 FROM sys.certificates
+    WHERE name = N'certGncAccounts'
+      AND pvt_key_encryption_type = 'PW'
+)
+BEGIN
+    DECLARE @dropSignatures NVARCHAR(MAX) = N'';
+
+    SELECT @dropSignatures += N'DROP SIGNATURE FROM '
+        + QUOTENAME(OBJECT_SCHEMA_NAME(cp.major_id)) + N'.'
+        + QUOTENAME(OBJECT_NAME(cp.major_id))
+        + N' BY CERTIFICATE certGncAccounts;'
+    FROM sys.crypt_properties AS cp
+    INNER JOIN sys.certificates AS c
+        ON c.thumbprint = cp.thumbprint
+    WHERE c.name = N'certGncAccounts'
+      AND cp.class = 1;
+
+    EXEC (@dropSignatures);
+
+    IF USER_ID(N'userGncAccountsCertificate') IS NOT NULL
+        DROP USER userGncAccountsCertificate;
+
+    DROP CERTIFICATE certGncAccounts;
+
+    EXEC (N'USE master;
+        IF SUSER_ID(N''loginGncAccountsCertificate'') IS NOT NULL
+            DROP LOGIN loginGncAccountsCertificate;
+        IF CERT_ID(N''certGncAccounts'') IS NOT NULL
+            DROP CERTIFICATE certGncAccounts;');
+END;
+GO
+
+-- 3. Certificado nuevo, protegido por la master key.
 IF CERT_ID('certGncAccounts') IS NULL
 BEGIN
     CREATE CERTIFICATE certGncAccounts
-    ENCRYPTION BY PASSWORD = 'tammy'
     WITH SUBJECT = 'Procedimientos de cuentas GNC';
 END;
 GO
@@ -1808,9 +1877,27 @@ GO
 
 DECLARE @certificate VARBINARY(MAX) =
     CERTENCODED(CERT_ID('certGncAccounts'));
+DECLARE @thumbprint VARBINARY(32) = (
+    SELECT thumbprint FROM sys.certificates WHERE name = N'certGncAccounts'
+);
 
+-- La copia en master (solo la clave pública) debe ser la misma que la
+-- de la base. Si quedó una copia de otro certificado (por ejemplo, si
+-- la base se borró y se volvió a crear), se reemplaza.
 DECLARE @sql NVARCHAR(MAX) =
     N'USE master;
+
+    IF EXISTS (
+        SELECT 1 FROM sys.certificates
+        WHERE name = N''certGncAccounts''
+          AND thumbprint <> '
+        + CONVERT(NVARCHAR(MAX), @thumbprint, 1) + N'
+    )
+    BEGIN
+        IF SUSER_ID(N''loginGncAccountsCertificate'') IS NOT NULL
+            DROP LOGIN loginGncAccountsCertificate;
+        DROP CERTIFICATE certGncAccounts;
+    END;
 
     IF CERT_ID(''certGncAccounts'') IS NULL
         CREATE CERTIFICATE certGncAccounts
@@ -1847,8 +1934,7 @@ END;
 GO
 
 ADD SIGNATURE TO OBJECT::dbo.pa_validarCuenta
-BY CERTIFICATE certGncAccounts
-WITH PASSWORD = 'tammy';
+BY CERTIFICATE certGncAccounts;
 GO
 
 GRANT EXECUTE ON dbo.pa_validarCuenta
@@ -2017,13 +2103,11 @@ END;
 GO
 
 ADD SIGNATURE TO OBJECT::dbo.pa_listarUsuarios
-BY CERTIFICATE certGncAccounts
-WITH PASSWORD = 'tammy';
+BY CERTIFICATE certGncAccounts;
 GO
 
 ADD SIGNATURE TO OBJECT::dbo.pa_administrarUsuario
-BY CERTIFICATE certGncAccounts
-WITH PASSWORD = 'tammy';
+BY CERTIFICATE certGncAccounts;
 GO
 
 GRANT EXECUTE ON dbo.pa_listarUsuarios TO rolAdmin;
@@ -2040,17 +2124,26 @@ GO
 USE master;
 GO
 
+/* Igual que los demás logins: se crea con una contraseña aleatoria
+   que se muestra una sola vez en Messages. La aplicación la lee de
+   config/database.local.php ($registrationPassword) o de la variable
+   de entorno DB_REGISTRATION_PASSWORD. Si el login ya existe, su
+   contraseña no se cambia. */
 IF SUSER_ID(N'gnc_registro') IS NULL
 BEGIN
-    CREATE LOGIN gnc_registro
-    WITH PASSWORD = 'RegistroGnc2026!Local',
-         CHECK_POLICY = ON,
-         DEFAULT_DATABASE = gncproyecto;
+    DECLARE @registrationPassword NVARCHAR(128) =
+        N'Gnc!' + CONVERT(NVARCHAR(64), CRYPT_GEN_RANDOM(16), 2) + N'a';
+
+    EXEC (N'CREATE LOGIN gnc_registro WITH PASSWORD = N'''
+        + @registrationPassword + N''''
+        + N', CHECK_POLICY = ON, DEFAULT_DATABASE = gncproyecto;');
+
+    PRINT N'Login gnc_registro creado. Contraseña: ' + @registrationPassword
+        + N'  (ponla en $registrationPassword de database.local.php'
+        + N' o en DB_REGISTRATION_PASSWORD; no se vuelve a mostrar)';
 END
 ELSE
 BEGIN
-    ALTER LOGIN gnc_registro
-    WITH PASSWORD = 'RegistroGnc2026!Local';
     ALTER LOGIN gnc_registro ENABLE;
 END;
 GO
@@ -2163,8 +2256,7 @@ END;
 GO
 
 ADD SIGNATURE TO OBJECT::dbo.pa_registrarCliente
-BY CERTIFICATE certGncAccounts
-WITH PASSWORD = 'tammy';
+BY CERTIFICATE certGncAccounts;
 GO
 
 GRANT EXECUTE ON dbo.pa_registrarCliente TO gnc_registro;
@@ -2674,4 +2766,409 @@ SELECT a.id, a.event, u.name AS usuario,
 FROM dbo.tbl_auditSessions AS a
 LEFT JOIN dbo.tbl_users AS u ON u.id = a.user_id
 ORDER BY a.id;
+GO
+
+
+/* ============================================================
+   RESPALDO Y RESTAURACIÓN
+
+   Objetivo:
+   Permitir que el administrador haga respaldos completos de
+   gncproyecto, compruebe que el archivo no esté dañado y pruebe
+   la recuperación restaurándolo en una base aparte
+   (gncproyecto_prueba), sin tocar nunca la base real.
+
+   Procedimientos:
+   - pa_respaldoCompleto   BACKUP DATABASE con CHECKSUM
+   - pa_verificarRespaldo  RESTORE VERIFYONLY
+   - pa_restaurarRespaldo  RESTORE en gncproyecto_prueba
+   - pa_listarRespaldos    historial para la pantalla
+
+   Archivos:
+   Se guardan en la carpeta de respaldos de la instancia
+   (SERVERPROPERTY('InstanceDefaultBackupPath')). Los
+   procedimientos solo reciben el nombre del archivo, nunca una
+   ruta, y solo aceptan archivos creados por pa_respaldoCompleto.
+
+   Permisos:
+   Los usuarios de la aplicación no pueden respaldar ni restaurar.
+   Los procedimientos se firman con certGncAccounts (el mismo
+   certificado de la gestión de cuentas):
+   - userGncAccountsCertificate (en gncproyecto) es miembro de
+     db_backupoperator, para poder hacer BACKUP DATABASE.
+   - loginGncAccountsCertificate (en master) es miembro de
+     dbcreator, para poder verificar y restaurar.
+   Solo rolAdmin puede ejecutarlos, y la restauración siempre va a
+   gncproyecto_prueba porque ese nombre está fijo en el código.
+   ============================================================ */
+
+USE gncproyecto;
+GO
+
+
+/*================ TABLA DE HISTORIAL ================*/
+
+/* ------------------------------------------------------------
+   tbl_backupHistory
+   Registra cada respaldo, verificación y restauración, con su
+   resultado. Solo se crea si no existe, para no perder el
+   historial al volver a ejecutar esta sección.
+   ------------------------------------------------------------ */
+IF OBJECT_ID('dbo.tbl_backupHistory', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.tbl_backupHistory (
+        id               INT IDENTITY(1,1) NOT NULL,
+        operation        VARCHAR(10)     NOT NULL,
+        file_name        NVARCHAR(200)   NOT NULL,
+        target_database  SYSNAME         NOT NULL,
+        status           VARCHAR(8)      NOT NULL,
+        message          NVARCHAR(4000)  NULL,
+        user_id          INT             NULL,
+        login_name       NVARCHAR(128)   NOT NULL
+            CONSTRAINT DF_backup_history_login DEFAULT ORIGINAL_LOGIN(),
+        action_date      DATETIME2(0)    NOT NULL
+            CONSTRAINT DF_backup_history_date DEFAULT SYSDATETIME(),
+        CONSTRAINT PK_backup_history PRIMARY KEY (id),
+        CONSTRAINT CK_backup_history_operation
+            CHECK (operation IN ('RESPALDO', 'VERIFICAR', 'RESTAURAR')),
+        CONSTRAINT CK_backup_history_status
+            CHECK (status IN ('EXITOSO', 'FALLIDO'))
+    );
+END;
+GO
+
+
+/*================ FUNCIÓN DE APOYO ================*/
+
+/* ------------------------------------------------------------
+   fn_rutaRespaldo
+   Devuelve la ruta completa de un archivo dentro de la carpeta de
+   respaldos de la instancia.
+   ------------------------------------------------------------ */
+CREATE OR ALTER FUNCTION dbo.fn_rutaRespaldo (@fileName NVARCHAR(200))
+RETURNS NVARCHAR(1000)
+AS
+BEGIN
+    DECLARE @folder NVARCHAR(800) =
+        CONVERT(NVARCHAR(800), SERVERPROPERTY('InstanceDefaultBackupPath'));
+
+    IF RIGHT(@folder, 1) <> N'\'
+        SET @folder += N'\';
+
+    RETURN @folder + @fileName;
+END;
+GO
+
+
+/*================ PROCEDIMIENTOS ================*/
+
+/* ------------------------------------------------------------
+   pa_respaldoCompleto
+   Hace un respaldo completo de gncproyecto en un archivo nuevo,
+   llamado gncproyecto_AAAAMMDD_HHMMSS.bak.
+   - CHECKSUM: SQL Server valida cada página al respaldar.
+   - COPY_ONLY: no altera la cadena de respaldos de la instancia,
+     por si el servidor tiene su propio plan de respaldos.
+   Devuelve el nombre del archivo creado.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_respaldoCompleto
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede hacer respaldos.', 1;
+
+    DECLARE @fileName NVARCHAR(200) =
+        N'gncproyecto_' + FORMAT(SYSDATETIME(), 'yyyyMMdd_HHmmss') + N'.bak';
+    DECLARE @path NVARCHAR(1000) = dbo.fn_rutaRespaldo(@fileName);
+
+    BEGIN TRY
+        BACKUP DATABASE gncproyecto
+        TO DISK = @path
+        WITH COPY_ONLY, INIT, CHECKSUM,
+             NAME = N'gncproyecto - respaldo completo';
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESPALDO', @fileName, N'gncproyecto', 'EXITOSO',
+             N'Respaldo completo creado.', dbo.fn_auditUserId());
+
+        SELECT @fileName AS file_name;
+    END TRY
+    BEGIN CATCH
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESPALDO', @fileName, N'gncproyecto', 'FALLIDO',
+             ERROR_MESSAGE(), dbo.fn_auditUserId());
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+/* ------------------------------------------------------------
+   pa_verificarRespaldo
+   Comprueba que un respaldo se pueda leer completo y que sus
+   CHECKSUM sean correctos, sin restaurarlo.
+   Solo acepta archivos que pa_respaldoCompleto creó con éxito.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_verificarRespaldo
+    @fileName NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede verificar respaldos.', 1;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.tbl_backupHistory
+        WHERE operation = 'RESPALDO'
+          AND status = 'EXITOSO'
+          AND file_name = @fileName
+    )
+        THROW 51501, 'El respaldo indicado no existe.', 1;
+
+    DECLARE @path NVARCHAR(1000) = dbo.fn_rutaRespaldo(@fileName);
+
+    BEGIN TRY
+        RESTORE VERIFYONLY
+        FROM DISK = @path
+        WITH CHECKSUM;
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('VERIFICAR', @fileName, N'gncproyecto', 'EXITOSO',
+             N'El respaldo es válido.', dbo.fn_auditUserId());
+
+        SELECT N'El respaldo es válido.' AS message;
+    END TRY
+    BEGIN CATCH
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('VERIFICAR', @fileName, N'gncproyecto', 'FALLIDO',
+             ERROR_MESSAGE(), dbo.fn_auditUserId());
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+/* ------------------------------------------------------------
+   pa_restaurarRespaldo
+   Restaura un respaldo en gncproyecto_prueba para comprobar que
+   la recuperación funciona. La base real nunca se modifica: el
+   nombre de la base destino está fijo en el código.
+   - Si gncproyecto_prueba ya existe, se desconecta a quien la
+     esté usando y se reemplaza.
+   - Los archivos se crean en las carpetas de datos y de log de la
+     instancia (MOVE), para no chocar con los de gncproyecto.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_restaurarRespaldo
+    @fileName NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede restaurar respaldos.', 1;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.tbl_backupHistory
+        WHERE operation = 'RESPALDO'
+          AND status = 'EXITOSO'
+          AND file_name = @fileName
+    )
+        THROW 51501, 'El respaldo indicado no existe.', 1;
+
+    DECLARE @path NVARCHAR(1000) = dbo.fn_rutaRespaldo(@fileName);
+
+    -- Nombres lógicos de los archivos de gncproyecto (son los mismos
+    -- que tiene el respaldo).
+    DECLARE @dataName SYSNAME = (
+        SELECT TOP 1 name FROM sys.database_files WHERE type_desc = 'ROWS'
+    );
+    DECLARE @logName SYSNAME = (
+        SELECT TOP 1 name FROM sys.database_files WHERE type_desc = 'LOG'
+    );
+
+    DECLARE @dataFolder NVARCHAR(800) =
+        CONVERT(NVARCHAR(800), SERVERPROPERTY('InstanceDefaultDataPath'));
+    DECLARE @logFolder NVARCHAR(800) =
+        CONVERT(NVARCHAR(800), SERVERPROPERTY('InstanceDefaultLogPath'));
+
+    IF RIGHT(@dataFolder, 1) <> N'\' SET @dataFolder += N'\';
+    IF RIGHT(@logFolder, 1) <> N'\' SET @logFolder += N'\';
+
+    DECLARE @dataFile NVARCHAR(1000) = @dataFolder + N'gncproyecto_prueba.mdf';
+    DECLARE @logFile NVARCHAR(1000) = @logFolder + N'gncproyecto_prueba_log.ldf';
+
+    BEGIN TRY
+        IF DB_ID(N'gncproyecto_prueba') IS NOT NULL
+            ALTER DATABASE gncproyecto_prueba
+            SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+        RESTORE DATABASE gncproyecto_prueba
+        FROM DISK = @path
+        WITH MOVE @dataName TO @dataFile,
+             MOVE @logName TO @logFile,
+             REPLACE, CHECKSUM, RECOVERY;
+
+        IF DATABASEPROPERTYEX(N'gncproyecto_prueba', 'Status') <> 'ONLINE'
+            THROW 51502, 'La base de prueba no quedó en línea.', 1;
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESTAURAR', @fileName, N'gncproyecto_prueba', 'EXITOSO',
+             N'Respaldo restaurado en gncproyecto_prueba.', dbo.fn_auditUserId());
+
+        SELECT N'Respaldo restaurado en gncproyecto_prueba.' AS message;
+    END TRY
+    BEGIN CATCH
+        -- Si la restauración falló, la base de prueba no debe quedar
+        -- bloqueada en modo de un solo usuario.
+        IF DB_ID(N'gncproyecto_prueba') IS NOT NULL
+           AND DATABASEPROPERTYEX(N'gncproyecto_prueba', 'Status') = 'ONLINE'
+            ALTER DATABASE gncproyecto_prueba SET MULTI_USER;
+
+        INSERT INTO dbo.tbl_backupHistory
+            (operation, file_name, target_database, status, message, user_id)
+        VALUES
+            ('RESTAURAR', @fileName, N'gncproyecto_prueba', 'FALLIDO',
+             ERROR_MESSAGE(), dbo.fn_auditUserId());
+
+        THROW;
+    END CATCH;
+END;
+GO
+
+/* ------------------------------------------------------------
+   pa_listarRespaldos
+   Historial de respaldos, verificaciones y restauraciones, del
+   más reciente al más antiguo.
+   ------------------------------------------------------------ */
+CREATE OR ALTER PROCEDURE dbo.pa_listarRespaldos
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF COALESCE(IS_ROLEMEMBER('rolAdmin'), 0) <> 1
+       AND IS_SRVROLEMEMBER('sysadmin') <> 1
+        THROW 51500, 'Solo el administrador puede ver los respaldos.', 1;
+
+    SELECT TOP 100
+        h.id,
+        h.operation,
+        h.file_name,
+        h.target_database,
+        h.status,
+        h.message,
+        COALESCE(u.name, h.login_name) AS user_name,
+        h.action_date
+    FROM dbo.tbl_backupHistory AS h
+    LEFT JOIN dbo.tbl_users AS u
+        ON u.id = h.user_id
+    ORDER BY h.id DESC;
+END;
+GO
+
+
+/*================ PERMISOS ================*/
+
+-- El usuario del certificado puede respaldar gncproyecto.
+IF IS_ROLEMEMBER(N'db_backupoperator', N'userGncAccountsCertificate') <> 1
+    ALTER ROLE db_backupoperator ADD MEMBER userGncAccountsCertificate;
+GO
+
+-- El login del certificado puede verificar y restaurar
+-- (RESTORE necesita permisos de servidor).
+USE master;
+GO
+IF IS_SRVROLEMEMBER(N'dbcreator', N'loginGncAccountsCertificate') <> 1
+    ALTER SERVER ROLE dbcreator ADD MEMBER loginGncAccountsCertificate;
+GO
+USE gncproyecto;
+GO
+
+-- CREATE OR ALTER borra la firma, así que se firma después de crear.
+ADD SIGNATURE TO OBJECT::dbo.pa_respaldoCompleto
+BY CERTIFICATE certGncAccounts;
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_verificarRespaldo
+BY CERTIFICATE certGncAccounts;
+GO
+
+ADD SIGNATURE TO OBJECT::dbo.pa_restaurarRespaldo
+BY CERTIFICATE certGncAccounts;
+GO
+
+-- Nadie modifica el historial directamente; solo los procedimientos
+-- escriben en él.
+DENY INSERT, UPDATE, DELETE ON dbo.tbl_backupHistory TO rolAdmin, rolEmpleado, rolCliente;
+DENY SELECT ON dbo.tbl_backupHistory TO rolEmpleado, rolCliente;
+
+GRANT EXECUTE ON dbo.pa_respaldoCompleto  TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_verificarRespaldo TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_restaurarRespaldo TO rolAdmin;
+GRANT EXECUTE ON dbo.pa_listarRespaldos   TO rolAdmin;
+GO
+
+
+/* ============================================================
+   COMPROBACIÓN DEL RESPALDO Y LA RESTAURACIÓN
+
+   1. Se crea un respaldo completo.
+   2. Se verifica el archivo.
+   3. Se restaura en gncproyecto_prueba.
+   4. Se compara la cantidad de filas de las tablas principales
+      entre la base real y la de prueba: deben ser iguales.
+   ============================================================ */
+
+-- No se usa INSERT ... EXEC para leer el nombre del archivo porque
+-- abre una transacción, y BACKUP no se permite dentro de una.
+EXEC dbo.pa_respaldoCompleto;
+GO
+
+DECLARE @fileName NVARCHAR(200) = (
+    SELECT TOP 1 file_name
+    FROM dbo.tbl_backupHistory
+    WHERE operation = 'RESPALDO' AND status = 'EXITOSO'
+    ORDER BY id DESC
+);
+
+EXEC dbo.pa_verificarRespaldo @fileName = @fileName;
+EXEC dbo.pa_restaurarRespaldo @fileName = @fileName;
+GO
+
+-- Comparación entre la base real y la restaurada.
+SELECT t.tabla, t.filas_original, t.filas_prueba,
+       CASE WHEN t.filas_original = t.filas_prueba
+            THEN 'IGUAL' ELSE 'DIFERENTE' END AS resultado
+FROM (
+    SELECT 'tbl_products', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_products),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_products)
+    UNION ALL
+    SELECT 'tbl_sales', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_sales),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_sales)
+    UNION ALL
+    SELECT 'tbl_saleDetails', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_saleDetails),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_saleDetails)
+    UNION ALL
+    SELECT 'tbl_users', (SELECT COUNT(*) FROM gncproyecto.dbo.tbl_users),
+           (SELECT COUNT(*) FROM gncproyecto_prueba.dbo.tbl_users)
+) AS t (tabla, filas_original, filas_prueba);
+
+EXEC dbo.pa_listarRespaldos;
 GO

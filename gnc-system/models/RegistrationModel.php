@@ -16,17 +16,22 @@ class RegistrationModel
 
             $config = __DIR__ . '/../config/database.local.php';
 
-            if (!is_file($config)) {
-                error_log(
-                    'GNC: registro: no existe config/database.local.php.'
-                );
-
-                throw new RuntimeException(
-                    'No existe la configuración local.'
-                );
+            if (is_file($config)) {
+                include $config;
             }
 
-            include $config;
+            // En Docker o en el hosting, la cuenta de registro viene de
+            // variables de entorno para no guardar la contraseña en archivos.
+            $userFromEnv = getenv('DB_REGISTRATION_USER');
+            $passwordFromEnv = getenv('DB_REGISTRATION_PASSWORD');
+
+            if (is_string($userFromEnv) && $userFromEnv !== '') {
+                $registrationUser = $userFromEnv;
+            }
+
+            if (is_string($passwordFromEnv) && $passwordFromEnv !== '') {
+                $registrationPassword = $passwordFromEnv;
+            }
 
             if (
                 !is_string($registrationUser)
@@ -35,8 +40,9 @@ class RegistrationModel
                 || $registrationPassword === ''
             ) {
                 error_log(
-                    'GNC: registro: falta registrationUser '
-                    . 'o registrationPassword en database.local.php.'
+                    'GNC: registro: falta registrationUser/registrationPassword '
+                    . 'en database.local.php o DB_REGISTRATION_USER/'
+                    . 'DB_REGISTRATION_PASSWORD en el entorno.'
                 );
 
                 throw new RuntimeException(
