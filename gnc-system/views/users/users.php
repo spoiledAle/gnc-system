@@ -23,36 +23,35 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Administración de usuarios</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
-    <style>
-        .table-wrap { overflow: auto; }
-        select { min-width: 130px; margin: 5px; }
-        form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        .message { padding: 15px; margin: 15px 0; border: 1px solid #666; }
-    </style>
 </head>
 <body>
-<div class="navbar">
-    <a class="logo" href="../home.php">
-        <img src="../../assets/images/GNC_Logo.svg.png" alt="GNC">
-    </a>
-    <a class="btn" href="../logout.php">Cerrar sesión</a>
-</div>
+<?php
+$currentPage = 'users';
+$basePath = '../';
+include __DIR__ . '/../partials/navbar.php';
+?>
 
 <main class="container">
-    <h1>Administración de usuarios</h1>
-    <p class="subtitle">Cambia el rol y el estado de las cuentas.</p>
-    <a class="btn" href="../home.php">Volver</a>
+    <h1 class="title">Administración de usuarios</h1>
+    <p class="subtitle">Cambia el rol y el estado de las cuentas del sistema.</p>
+
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="../home.php">← Volver</a>
+    </div>
 
     <?php foreach (['usersSuccess', 'usersError'] as $key): ?>
         <?php if (isset($_SESSION[$key])): ?>
-            <p class="message" role="status">
+            <div
+                class="alert <?= $key === 'usersSuccess' ? 'alert-success' : 'alert-error' ?>"
+                role="<?= $key === 'usersSuccess' ? 'status' : 'alert' ?>"
+            >
                 <?= gncEscape($_SESSION[$key]) ?>
-            </p>
+            </div>
             <?php unset($_SESSION[$key]); ?>
         <?php endif; ?>
     <?php endforeach; ?>
 
-    <div class="table-wrap">
+    <div class="table-responsive">
         <table>
             <thead>
             <tr>

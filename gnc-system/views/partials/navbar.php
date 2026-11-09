@@ -116,6 +116,15 @@ $escapeNavbar = static function (string $value): string {
     </button>
 
     <div class="nav-links" id="navLinks">
+        <?php if ($loggedUserName !== ''): ?>
+            <div class="nav-mobile-user">
+                <span class="nav-mobile-avatar"><?= htmlspecialchars(strtoupper(substr($loggedUserName, 0, 1)), ENT_QUOTES, 'UTF-8') ?></span>
+                <div class="nav-mobile-user-info">
+                    <span class="nav-mobile-name"><?= $escapeNavbar($loggedUserName) ?></span>
+                    <span class="nav-mobile-role"><?= $escapeNavbar($role) ?></span>
+                </div>
+            </div>
+        <?php endif; ?>
         <?php foreach ($navigation as $item): ?>
             <?php
             $isActive = $currentPage === $item['page'];
@@ -151,7 +160,7 @@ $escapeNavbar = static function (string $value): string {
 
         <a
             href="<?= $escapeNavbar($basePath . 'logout.php') ?>"
-            class="btn"
+            class="btn btn-logout"
         >
             Cerrar sesión
         </a>
