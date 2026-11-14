@@ -5,6 +5,11 @@ productos, ventas, compras a proveedores, métodos de pago y auditoría de
 cambios. Desarrollado en PHP (patrón MVC) sobre una base de datos
 **SQL Server**.
 
+## Sistema en línea
+
+El sistema está publicado en Render:
+**[https://gnc-system.onrender.com/](https://gnc-system.onrender.com/)**
+
 ## Funcionalidades
 
 - **Inicio de sesión y registro** de usuarios.
@@ -56,6 +61,13 @@ Al ejecutarlo completo en SSMS se crea la base `gncproyecto` con:
 También carga datos de ejemplo para probar el sistema.
 
 ## Instalación rápida
+
+> **Nota:** estos pasos son la forma en que se corría el proyecto antes,
+> de manera local con XAMPP. Ahora la aplicación ya está publicada en
+> Render ([https://gnc-system.onrender.com/](https://gnc-system.onrender.com/)),
+> así que no hace falta instalar nada para usarla. En Render la conexión
+> se configura con variables de entorno, no con `database.local.php`.
+> Se dejan aquí solo como referencia.
 
 1. Instala los drivers `pdo_sqlsrv` y `sqlsrv` en el PHP de XAMPP.
 2. Ejecuta `gnc-system/database/gncproyecto_sqlserver.sql` completo en SSMS.

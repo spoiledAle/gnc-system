@@ -1,5 +1,11 @@
 # Cómo levantar el proyecto (SQL Server)
 
+> **Nota:** esta guía explica cómo se corría el proyecto antes, de manera
+> local con XAMPP. Ahora la aplicación ya está publicada en Render
+> ([https://gnc-system.onrender.com/](https://gnc-system.onrender.com/)),
+> así que no hace falta instalar nada para usarla. Se deja solo como
+> referencia.
+
 El proyecto se conecta a SQL Server usando PDO + el driver `sqlsrv` de Microsoft.
 Como la base de datos y los drivers viven en la máquina de cada quien (no se
 suben al repo), cada persona del equipo tiene que hacer esta configuración
