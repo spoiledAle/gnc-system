@@ -11,9 +11,7 @@ function gncDatabaseSettings(): array
         include $localConfig;
     }
 
-    // En Docker o en el hosting, el servidor y la base vienen de variables
-    // de entorno. El usuario y la contraseña no: cada persona entra con su
-    // propio login de SQL Server (de eso dependen los roles y la auditoría).
+
     $serverFromEnv = getenv('DB_SERVER');
     $databaseFromEnv = getenv('DB_NAME');
 
@@ -48,8 +46,7 @@ function connectSqlServer(
     ]);
 }
 
-// Registra LOGIN, LOGOUT o EXPIRADA en tbl_auditSessions. SQL Server
-// toma el usuario de la conexión; si falla, no se bloquea al usuario.
+
 function registerGncSessionEvent(PDO $connection, string $event): void
 {
     try {
